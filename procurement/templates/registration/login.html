@@ -1,13 +1,128 @@
-{% extends "procurement/base.html" %}
-{% block content %}
-<div class="container mt-5 text-center">
-  <div class="card shadow-sm p-4 mx-auto" style="max-width: 400px;">
-    <h3 class="text-maroon mb-3">Login</h3>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-maroon w-100 mt-3">Login</button>
-    </form>
-  </div>
-</div>
-{% endblock %}
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EVSU Procurement Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'procurement/style.css' %}" rel="stylesheet">
+    <style>
+      body {
+        background-color: #f0f2f5;
+        font-family: 'Segoe UI', Arial, sans-serif;
+      }
+
+      /* Left Banner Panel */
+      .left-panel {
+        background-color: transparent;
+        padding: 100px 60px; /* large padding */
+      }
+
+      .left-panel img {
+        width: 300px; /* bigger logo */
+        height: auto;
+        margin-bottom: 25px;
+      }
+
+      .left-panel h1 {
+        color: #800000;
+        font-weight: 700;
+        font-size: 2.6rem; /* larger title */
+      }
+
+      .left-panel p {
+        color: #333;
+        font-size: 1.2rem;
+      }
+
+      /* Login Card */
+      .login-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 30px;
+        width: 380px;
+        margin: auto;
+      }
+
+      .btn-maroon {
+        background-color: #800000;
+        color: white;
+        font-weight: 600;
+      }
+
+      .btn-maroon:hover {
+        background-color: #a30000;
+        color: #fff;
+      }
+
+      .footer-text {
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      /* Responsive Fix for Mobile */
+      @media (max-width: 768px) {
+        .left-panel img {
+          width: 180px; /* slightly smaller on mobile */
+        }
+
+        .left-panel {
+          padding: 40px 20px;
+        }
+
+        .left-panel h1 {
+          font-size: 1.8rem;
+        }
+
+        .login-card {
+          width: 100%;
+          max-width: 350px;
+        }
+      }
+
+      
+    </style>
+  </head>
+  <body>
+
+    <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+      <div class="row w-100 d-flex align-items-center justify-content-center">
+        <!-- Left Banner -->
+        <div class="col-md-6 text-center left-panel">
+          <img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo">
+          <h1>Procurement System</h1>
+          <p>BAC Secretariat & Procurement Office</p>
+        </div>
+
+        <!-- Right Login Card -->
+        <div class="col-md-4">
+          <div class="login-card">
+            {% if form.errors %}
+              <div class="alert alert-danger">Invalid username or password.</div>
+            {% endif %}
+
+            <form method="post" novalidate>
+              {% csrf_token %}
+              <div class="form-floating mb-3">
+                <input type="text" name="username" id="id_username" class="form-control" placeholder="Username" required>
+                <label for="id_username">Username</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input type="password" name="password" id="id_password" class="form-control" placeholder="Password" required>
+                <label for="id_password">Password</label>
+              </div>
+              <button type="submit" class="btn btn-maroon w-100 mb-3">Log In</button>
+            </form>
+
+            <hr>
+            <p class="footer-text mb-0">© {{ now|date:"Y" }} Eastern Visayas State University Procurement Office</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

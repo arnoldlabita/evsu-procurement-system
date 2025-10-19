@@ -49,11 +49,13 @@ INSTALLED_APPS = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# static & media
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'procurement' / 'static']
+# Static files (CSS, JS, Images)
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']  # for your project-level static folder
+STATIC_ROOT = BASE_DIR / 'staticfiles'    # for collectstatic output
 
-MEDIA_URL = 'media/'
+# Media files (optional - for uploaded files)
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # default primary key

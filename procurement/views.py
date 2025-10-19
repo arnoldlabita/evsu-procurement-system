@@ -17,6 +17,8 @@ from .forms import (
 )
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect
 
 def in_procurement_group(user):
     return user.is_authenticated and user.groups.filter(name="Procurement").exists()
@@ -253,3 +255,14 @@ def get_template_names(self):
     elif user.groups.filter(name="Requisitioner").exists():
         return ["procurement/dashboard_requisitioner.html"]
     return ["procurement/dashboard_unauthorized.html"]
+
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect
+
+class EVSULoginView(LoginView):
+    template_name = "registration/login.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("procurement:dashboard")
+        return super().dispatch(request, *args, **kwargs)

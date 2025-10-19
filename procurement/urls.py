@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import EVSULoginView
 
 app_name = "procurement"
 
@@ -47,4 +48,5 @@ urlpatterns = [
     # ----------------------------
     path("suppliers/", views.SupplierListView.as_view(), name="supplier_list"),
     path("suppliers/new/", views.SupplierCreateView.as_view(), name="supplier_create"),
+    path("accounts/login/", EVSULoginView.as_view(), name="login"),
 ]
