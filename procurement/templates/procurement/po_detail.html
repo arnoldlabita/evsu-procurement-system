@@ -1,0 +1,8 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h3>Purchase Order {{ po.po_number }}</h3>
+<p><strong>Supplier:</strong> {{ po.supplier.name }}</p>
+<p><strong>Receiving Office:</strong> {{ po.receiving_office }}</p>
+<p><strong>Submission Date:</strong> {{ po.submission_date }}</p>
+<button onclick="window.print()" class="btn btn-primary no-print">Print PO</button>
+{% endblock %}

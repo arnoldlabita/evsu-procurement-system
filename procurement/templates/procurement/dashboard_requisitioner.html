@@ -1,0 +1,16 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="container text-center mt-4">
+  <h2>Requisitioner Dashboard</h2>
+  <p class="text-muted">Welcome {{ user.first_name }} — Track your purchase requests</p>
+  <div class="row mt-4">
+    <div class="col-md-6 offset-md-3"><div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="text-maroon">Your Purchase Requests</h5>
+        <h3>{{ pr_count }}</h3>
+        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon">View My PRs</a>
+        <a href="{% url 'procurement:pr_create' %}" class="btn btn-maroon mt-2">+ New PR</a>
+      </div></div></div>
+  </div>
+</div>
+{% endblock %}

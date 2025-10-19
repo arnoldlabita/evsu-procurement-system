@@ -1,0 +1,17 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h3>Abstract of Quotations (AOQ)</h3>
+<form method="post">
+{% csrf_token %}
+{{ formset.management_form }}
+<table class="table table-bordered">
+<thead class="table-maroon"><tr><th>Item</th><th>Supplier</th><th>Unit Price</th><th>Responsive</th></tr></thead>
+<tbody>
+{% for f in formset %}
+<tr><td>{{ f.pr_item }}</td><td>{{ f.supplier }}</td><td>{{ f.unit_price }}</td><td>{{ f.responsive }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<button class="btn btn-primary">Save AOQ</button>
+</form>
+{% endblock %}

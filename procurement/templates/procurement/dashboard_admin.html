@@ -1,0 +1,35 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="container text-center mt-4">
+  <h2>Admin Dashboard</h2>
+  <div class="row mt-4">
+    <div class="col-md-3"><div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="text-maroon">All Purchase Requests</h5>
+        <h3>{{ pr_count }}</h3>
+        <a href="{% url 'purchase_requests:list' %}" class="btn btn-outline-maroon">Manage PRs</a>
+      </div></div></div>
+
+    <div class="col-md-3"><div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="text-maroon">RFQs</h5>
+        <h3>{{ rfq_count }}</h3>
+        <a href="{% url 'rfqs:list' %}" class="btn btn-outline-maroon">Manage RFQs</a>
+      </div></div></div>
+
+    <div class="col-md-3"><div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="text-maroon">AOQs</h5>
+        <h3>{{ aoq_count }}</h3>
+        <a href="{% url 'aoqs:list' %}" class="btn btn-outline-maroon">Manage AOQs</a>
+      </div></div></div>
+
+    <div class="col-md-3"><div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="text-maroon">Purchase Orders</h5>
+        <h3>{{ po_count }}</h3>
+        <a href="{% url 'pos:list' %}" class="btn btn-outline-maroon">Manage POs</a>
+      </div></div></div>
+  </div>
+</div>
+{% endblock %}

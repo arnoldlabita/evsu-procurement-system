@@ -1,0 +1,23 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h3>Abstract of Quotations</h3>
+<table class="table table-bordered">
+<thead class="table-maroon"><tr><th>Item</th><th>Supplier</th><th>Price</th><th>Responsive</th></tr></thead>
+<tbody>
+{% for item in aoq.rfq.purchase_request.items.all %}
+<tr class="table-secondary"><td colspan="4"><strong>{{ item.description }}</strong></td></tr>
+{% for line in aoq.lines.filter(pr_item=item) %}
+{% with lowest=aoq.lines.filter(pr_item=item,responsive=True).order_by('unit_price').first %}
+<tr class="{% if line == lowest %}table-success{% endif %}">
+  <td></td><td>{{ line.supplier.name }}</td><td>{{ line.unit_price }}</td><td>{{ line.responsive }}</td>
+</tr>
+{% endwith %}
+{% endfor %}
+{% endfor %}
+</tbody>
+</table>
+<div class="no-print">
+  <a href="{% url 'procurement:aoq_generate_po' aoq.id %}" class="btn btn-primary">Generate PO</a>
+  <button onclick="window.print()" class="btn btn-secondary">Print AOQ</button>
+</div>
+{% endblock %}

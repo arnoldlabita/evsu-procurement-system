@@ -1,0 +1,33 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h3>Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}</h3>
+<p><strong>Office:</strong> {{ pr.requesting_office }}</p>
+<p><strong>Purpose:</strong> {{ pr.purpose }}</p>
+<table class="table table-bordered table-maroon">
+<thead><tr><th>Stock</th><th>Description</th><th>Qty</th><th>Unit</th><th>Est. Cost</th></tr></thead>
+<tbody>
+{% for i in pr.items.all %}
+<tr><td>{{ i.stock_no }}</td><td>{{ i.description }}</td><td>{{ i.quantity }}</td><td>{{ i.unit }}</td><td>{{ i.estimated_unit_cost }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<div class="no-print">
+  {% if user.is_staff %}
+  <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Assign PR Number</a>
+  {% endif %}
+  {% if pr.pr_number %}
+  <a href="#" onclick="window.print()" class="btn btn-primary">Print</a>
+  <a href="{% url 'procurement:create_rfq' pr.id %}" class="btn btn-secondary">Create RFQ</a>
+  <a href="{% url 'procurement:create_apr' pr.id %}" class="btn btn-secondary">Create APR</a>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% if user.groups.all|length and user.groups.all|join:","|contains:"Procurement" %}
+   <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Verify & Assign PR Number</a>
+{% endif %}
+
+{% if user.groups.filter(name="Procurement").exists %}
+  <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Assign PR Number</a>
+{% endif %}

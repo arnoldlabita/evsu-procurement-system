@@ -1,0 +1,60 @@
+.maroon-bg { background-color:#800000 !important; }
+.table-maroon thead { background:#800000; color:white; }
+@media print { .no-print { display:none; } }
+
+.text-maroon { color: #800000 !important; }
+.btn-outline-maroon {
+  border-color: #800000;
+  color: #800000;
+}
+.btn-outline-maroon:hover {
+  background-color: #800000;
+  color: white;
+}
+.card-title {
+  font-weight: 600;
+}
+
+/* Typography and color */
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background-color: #fafafa;
+}
+.text-maroon { color: #800000 !important; }
+.maroon-bg { background-color: #800000 !important; }
+
+/* Buttons */
+.btn-outline-maroon {
+  border-color: #800000;
+  color: #800000;
+}
+.btn-outline-maroon:hover {
+  background-color: #800000;
+  color: white;
+}
+
+/* Cards and tables */
+.card {
+  border-radius: 1rem;
+}
+.table-maroon thead {
+  background-color: #800000;
+  color: white;
+}
+
+/* Print mode */
+@media print {
+  .no-print { display: none; }
+  body { background: white; }
+}
+
+@media print {
+  .table { font-size: 0.9rem; }
+  .page-break { page-break-after: always; }
+}
+
+#item-table td.stock-no {
+  width: 50px;
+  text-align: center;
+  font-weight: 600;
+}

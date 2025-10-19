@@ -1,0 +1,100 @@
+{% extends "procurement/base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h2>Create Purchase Request</h2>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form|crispy }}
+
+  <h5>Items</h5>
+  {{ formset.management_form }}
+
+<table id="item-table" class="table table-bordered align-middle">
+  <thead class="table-maroon">
+    <tr>
+      <th>Stock No</th>
+      <th>Description</th>
+      <th>Quantity</th>
+      <th>Unit</th>
+      <th>Est. Unit Cost</th>
+      <th class="no-print">Action</th>
+    </tr>
+  </thead>
+  <tbody id="item-body">
+    {% for form in formset %}
+    <tr class="item-form">
+      <td class="stock-no text-center"></td>
+      <td>{{ form.description }}</td>
+      <td>{{ form.quantity }}</td>
+      <td>{{ form.unit }}</td>
+      <td>{{ form.estimated_unit_cost }}</td>
+      <td class="no-print">
+        <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
+      </td>
+    </tr>
+    {% empty %}
+  <!-- No rows shown initially -->
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Hidden template for new rows -->
+<table style="display:none;">
+  <tbody id="empty-form-template">
+    <tr class="item-form">
+      <td class="stock-no text-center"></td>
+      <td>{{ formset.empty_form.description }}</td>
+      <td>{{ formset.empty_form.quantity }}</td>
+      <td>{{ formset.empty_form.unit }}</td>
+      <td>{{ formset.empty_form.estimated_unit_cost }}</td>
+      <td class="no-print">
+        <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+  <button type="button" id="add-row" class="btn btn-outline-maroon mb-3">+ Add Item</button><br>
+  <button type="submit" class="btn btn-primary">Save Purchase Request</button>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const addButton = document.getElementById("add-row");
+  const totalForms = document.getElementById("id_form-TOTAL_FORMS");
+  const itemBody = document.getElementById("item-body");
+  const emptyTemplate = document.getElementById("empty-form-template").innerHTML;
+
+  // Function to re-number rows
+  function renumberRows() {
+    const rows = itemBody.querySelectorAll("tr.item-form");
+    rows.forEach((row, index) => {
+      const stockCell = row.querySelector(".stock-no");
+      if (stockCell) stockCell.textContent = index + 1;
+    });
+  }
+
+  // Add new row when clicking "+ Add Item"
+  addButton.addEventListener("click", function () {
+    const formCount = parseInt(totalForms.value);
+    const newRowHtml = emptyTemplate.replace(/__prefix__/g, formCount);
+    itemBody.insertAdjacentHTML("beforeend", newRowHtml);
+    totalForms.value = formCount + 1;
+    renumberRows();
+  });
+
+  // Remove row
+  itemBody.addEventListener("click", function (e) {
+    if (e.target && e.target.classList.contains("remove-row")) {
+      e.target.closest("tr").remove();
+      renumberRows();
+    }
+  });
+
+  // Initial numbering
+  renumberRows();
+});
+</script>
+
+{% endblock %}

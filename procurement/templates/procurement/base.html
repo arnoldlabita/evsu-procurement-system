@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EVSU Procurement</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'procurement/style.css' %}" rel="stylesheet">
+  </head>
+  <body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark maroon-bg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'procurement:dashboard' %}">EVSU Procurement</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="{% url 'procurement:pr_list' %}">Purchase Requests</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
+        </ul>
+
+        <ul class="navbar-nav ms-auto">
+          {% if user.is_authenticated %}
+            <li class="nav-item"><span class="nav-link">Hi {{ user.username }}</span></li>
+            <li class="nav-item">
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}" class="d-inline">
+             {% csrf_token %}
+             <button type="submit" class="btn btn-outline-light ms-2">Logout</button>
+            </form>
+          {% endif %}
+            </li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container my-4">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

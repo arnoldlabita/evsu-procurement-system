@@ -1,0 +1,57 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h2 class="text-center mb-4">Procurement Dashboard</h2>
+
+<div class="row g-4 justify-content-center">
+  <!-- Purchase Requests -->
+  <div class="col-md-3">
+    <div class="card shadow-sm text-center border-0 rounded-4">
+      <div class="card-body">
+        <h5 class="card-title text-maroon">Purchase Requests</h5>
+        <h2>{{ pr_count }}</h2>
+        <h4 class="text-center text-muted mb-4">{{ welcome_text }}</h4>
+        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon btn-sm">View PRs</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RFQs -->
+  <div class="col-md-3">
+    <div class="card shadow-sm text-center border-0 rounded-4">
+      <div class="card-body">
+        <h5 class="card-title text-maroon">Requests for Quotation</h5>
+        <h2>{{ rfq_count }}</h2>
+        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon btn-sm">Go to RFQs</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- AOQs -->
+  <div class="col-md-3">
+    <div class="card shadow-sm text-center border-0 rounded-4">
+      <div class="card-body">
+        <h5 class="card-title text-maroon">Abstracts of Quotation</h5>
+        <h2>{{ aoq_count }}</h2>
+        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon btn-sm">Go to AOQs</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- POs -->
+  <div class="col-md-3">
+    <div class="card shadow-sm text-center border-0 rounded-4">
+      <div class="card-body">
+        <h5 class="card-title text-maroon">Purchase Orders</h5>
+        <h2>{{ po_count }}</h2>
+        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon btn-sm">Go to POs</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="my-4">
+
+{% endblock %}
+
+context["recent_prs"] = PurchaseRequest.objects.order_by("-created_at")[:5]
+context["recent_pos"] = PurchaseOrder.objects.order_by("-created_at")[:5]

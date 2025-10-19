@@ -1,0 +1,19 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="text-center">
+  <p><strong>Republic of the Philippines</strong><br>
+  EASTERN VISAYAS STATE UNIVERSITY<br>Tacloban City</p>
+</div>
+<h4 class="text-center">REQUEST FOR QUOTATION</h4>
+<p>Date: {{ rfq.date }}</p>
+<p>Based on PR No. {{ rfq.purchase_request.pr_number }}</p>
+<table class="table table-bordered">
+<thead><tr><th>No</th><th>Item Description</th><th>Qty</th><th>Unit</th></tr></thead>
+<tbody>
+{% for i in rfq.purchase_request.items.all %}
+<tr><td>{{ forloop.counter }}</td><td>{{ i.description }}</td><td>{{ i.quantity }}</td><td>{{ i.unit }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<button onclick="window.print()" class="btn btn-primary no-print">Print RFQ</button>
+{% endblock %}

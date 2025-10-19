@@ -1,0 +1,18 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<h2>Purchase Requests</h2>
+<a href="{% url 'procurement:pr_create' %}" class="btn btn-primary mb-2">New PR</a>
+<table class="table table-bordered">
+<thead class="table-maroon"><tr><th>PR No</th><th>Office</th><th>Status</th><th></th></tr></thead>
+<tbody>
+{% for pr in prs %}
+<tr>
+  <td>{{ pr.pr_number|default:"(draft)" }}</td>
+  <td>{{ pr.requesting_office }}</td>
+  <td>{{ pr.status }}</td>
+  <td><a href="{% url 'procurement:pr_detail' pr.id %}" class="btn btn-sm btn-outline-dark">View</a></td>
+</tr>
+{% empty %}<tr><td colspan="4">No PRs yet.</td></tr>{% endfor %}
+</tbody>
+</table>
+{% endblock %}
