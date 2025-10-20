@@ -1,19 +1,72 @@
 {% extends "procurement/base.html" %}
 {% block content %}
-<div class="text-center">
-  <p><strong>Republic of the Philippines</strong><br>
-  EASTERN VISAYAS STATE UNIVERSITY<br>Tacloban City</p>
+
+<style>
+  @media print {
+    .no-print {
+      display: none;
+    }
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .table th, .table td {
+      border: 1px solid #000;
+      padding: 5px;
+    }
+  }
+</style>
+
+<div class="container mt-4">
+
+  <div class="text-center mb-3">
+    <p>
+      <strong>Republic of the Philippines</strong><br>
+      <strong>EASTERN VISAYAS STATE UNIVERSITY</strong><br>
+      Tacloban City
+    </p>
+  </div>
+
+  <h4 class="text-center mb-4">REQUEST FOR QUOTATION</h4>
+
+  <p><strong>Date:</strong> {{ rfq.date|date:"F d, Y" }}</p>
+  <p><strong>Based on PR No.:</strong> {{ rfq.purchase_request.pr_number }}</p>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Item Description</th>
+        <th>Qty</th>
+        <th>Unit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in rfq.purchase_request.items.all %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.description }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.unit }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="text-center">No items found for this PR.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="text-center mt-4">
+    <button onclick="window.print()" class="btn btn-primary no-print">
+      Print RFQ
+    </button>
+  </div>
+
 </div>
-<h4 class="text-center">REQUEST FOR QUOTATION</h4>
-<p>Date: {{ rfq.date }}</p>
-<p>Based on PR No. {{ rfq.purchase_request.pr_number }}</p>
-<table class="table table-bordered">
-<thead><tr><th>No</th><th>Item Description</th><th>Qty</th><th>Unit</th></tr></thead>
-<tbody>
-{% for i in rfq.purchase_request.items.all %}
-<tr><td>{{ forloop.counter }}</td><td>{{ i.description }}</td><td>{{ i.quantity }}</td><td>{{ i.unit }}</td></tr>
-{% endfor %}
-</tbody>
-</table>
-<button onclick="window.print()" class="btn btn-primary no-print">Print RFQ</button>
+
 {% endblock %}

@@ -1,99 +1,324 @@
 {% extends "procurement/base.html" %}
-{% load crispy_forms_tags %}
+{% load static %}
+{% load humanize %}
+{% load group_tags %}
+
 {% block content %}
-<h2>Create Purchase Request</h2>
-
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form|crispy }}
-
-  <h5>Items</h5>
-  {{ formset.management_form }}
-
-<table id="item-table" class="table table-bordered align-middle">
-  <thead class="table-maroon">
-    <tr>
-      <th>Stock No</th>
-      <th>Description</th>
-      <th>Quantity</th>
-      <th>Unit</th>
-      <th>Est. Unit Cost</th>
-      <th class="no-print">Action</th>
-    </tr>
-  </thead>
-  <tbody id="item-body">
-    {% for form in formset %}
-    <tr class="item-form">
-      <td class="stock-no text-center"></td>
-      <td>{{ form.description }}</td>
-      <td>{{ form.quantity }}</td>
-      <td>{{ form.unit }}</td>
-      <td>{{ form.estimated_unit_cost }}</td>
-      <td class="no-print">
-        <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
-      </td>
-    </tr>
-    {% empty %}
-  <!-- No rows shown initially -->
-    {% endfor %}
-  </tbody>
-</table>
-
-<!-- Hidden template for new rows -->
-<table style="display:none;">
-  <tbody id="empty-form-template">
-    <tr class="item-form">
-      <td class="stock-no text-center"></td>
-      <td>{{ formset.empty_form.description }}</td>
-      <td>{{ formset.empty_form.quantity }}</td>
-      <td>{{ formset.empty_form.unit }}</td>
-      <td>{{ formset.empty_form.estimated_unit_cost }}</td>
-      <td class="no-print">
-        <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-  <button type="button" id="add-row" class="btn btn-outline-maroon mb-3">+ Add Item</button><br>
-  <button type="submit" class="btn btn-primary">Save Purchase Request</button>
-</form>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const addButton = document.getElementById("add-row");
-  const totalForms = document.getElementById("id_form-TOTAL_FORMS");
-  const itemBody = document.getElementById("item-body");
-  const emptyTemplate = document.getElementById("empty-form-template").innerHTML;
-
-  // Function to re-number rows
-  function renumberRows() {
-    const rows = itemBody.querySelectorAll("tr.item-form");
-    rows.forEach((row, index) => {
-      const stockCell = row.querySelector(".stock-no");
-      if (stockCell) stockCell.textContent = index + 1;
-    });
+<style>
+  :root {
+    --maroon: #800000;
+    --muted: #6c757d;
+    --bg: #f4f5f7;
   }
 
-  // Add new row when clicking "+ Add Item"
-  addButton.addEventListener("click", function () {
-    const formCount = parseInt(totalForms.value);
-    const newRowHtml = emptyTemplate.replace(/__prefix__/g, formCount);
-    itemBody.insertAdjacentHTML("beforeend", newRowHtml);
-    totalForms.value = formCount + 1;
-    renumberRows();
+  body {
+    background: var(--bg);
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .pr-card {
+    background: #fff;
+    max-width: 1100px;
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    padding: 30px;
+  }
+
+  .pr-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 5px solid var(--maroon);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  .pr-header img {
+    width: 90px;
+    height: auto;
+  }
+
+  .pr-header h1 {
+    color: var(--maroon);
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  h2.text-maroon {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--maroon);
+  }
+
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    table-layout: fixed;
+  }
+
+  table.items th, table.items td {
+    border: 1px solid #e5e5e5;
+    padding: 8px;
+    vertical-align: middle;
+    text-align: left;
+  }
+
+  table.items th {
+    background: var(--maroon);
+    color: #fff;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  table.items td input,
+  table.items td select,
+  table.items td textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px 6px;
+  }
+
+  .line-total {
+    font-weight: 600;
+    text-align: right;
+  }
+
+  tfoot td {
+    background: #fafafa;
+    font-weight: bold;
+  }
+
+  .btn-maroon {
+    background: var(--maroon);
+    color: white;
+    border: none;
+    transition: background 0.2s ease-in-out;
+  }
+
+  .btn-maroon:hover {
+    background: #a30000;
+  }
+
+  .btn-outline-maroon {
+    color: var(--maroon);
+    border: 1px solid var(--maroon);
+    background: transparent;
+  }
+
+  .btn-outline-maroon:hover {
+    background: var(--maroon);
+    color: white;
+  }
+
+  .form-label {
+    font-weight: 600;
+  }
+
+  .no-print .btn {
+    margin-right: 6px;
+  }
+
+  @media print {
+    .no-print, .navbar {
+      display: none !important;
+    }
+    body {
+      background: white;
+    }
+    .pr-card {
+      box-shadow: none;
+      border: none;
+    }
+  }
+</style>
+
+<div class="pr-card">
+  <div class="pr-header">
+    <img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo">
+    <h1>PURCHASE REQUEST</h1>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="prForm">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <h2 class="text-maroon mb-3">
+      {% if edit_mode %}Edit Purchase Request — {{ pr.pr_number|default:"(Draft)" }}
+      {% else %}New Purchase Request{% endif %}
+    </h2>
+
+    <!-- PR Details -->
+    <div class="row mt-3 g-3">
+      <div class="col-md-6">
+        {{ form.requesting_office.label_tag }} {{ form.requesting_office }}
+      </div>
+      {% if is_procurement %}
+      <div class="col-md-3">
+        {{ form.pr_number.label_tag }} {{ form.pr_number }}
+      </div>
+      <div class="col-md-3">
+        {{ form.date.label_tag }} {{ form.date }}
+      </div>
+      {% endif %}
+      <div class="col-md-6">
+        {{ form.fund_cluster.label_tag }} {{ form.fund_cluster }}
+      </div>
+      <div class="col-md-6">
+        {{ form.responsibility_center_code.label_tag }} {{ form.responsibility_center_code }}
+      </div>
+    </div>
+
+    <!-- PR Items Table -->
+    <h5 class="mt-4 fw-bold text-maroon">Items</h5>
+    {{ formset.management_form }}
+    <div class="table-responsive">
+      <table class="items" id="item-table">
+        <thead>
+          <tr>
+            <th>Stock No.</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Unit Cost (₱)</th>
+            <th>Total (₱)</th>
+            <th class="no-print text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody id="formset-body">
+          {% for subform in formset %}
+          <tr class="item-row">
+            <td>{{ subform.stock_no }}</td>
+            <td>{{ subform.description }}</td>
+            <td>{{ subform.quantity }}</td>
+            <td>{{ subform.unit }}</td>
+            <td>{{ subform.unit_cost }}</td>
+            <td class="line-total text-end">0.00</td>
+            <td class="no-print text-center">
+              <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="text-end">Grand Total</td>
+            <td id="grand-total" class="text-end fw-bold">0.00</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="no-print mt-3 d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <button type="button" id="add-row" class="btn btn-outline-maroon btn-sm">+ Add Item</button>
+        <button type="button" id="print-btn" class="btn btn-maroon btn-sm">🖨 Print</button>
+      </div>
+      <button type="submit" class="btn btn-maroon btn-sm">💾 Save Purchase Request</button>
+    </div>
+
+    <div class="mt-4">
+      {{ form.purpose.label_tag }} {{ form.purpose }}
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const body = document.getElementById("formset-body");
+  const addBtn = document.getElementById("add-row");
+  const totalForms = document.getElementById("id_form-TOTAL_FORMS");
+  const printBtn = document.getElementById("print-btn");
+
+  const parseNum = v => parseFloat(String(v).replace(/,/g,"")) || 0;
+
+  function lineTotal(row) {
+    const q = parseNum(row.querySelector('[name$="quantity"]')?.value);
+    const c = parseNum(row.querySelector('[name$="unit_cost"],[name$="estimated_unit_cost"]')?.value);
+    const t = q * c;
+    row.querySelector(".line-total").textContent = t.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+    return t;
+  }
+
+  function grandTotal() {
+    let t = 0;
+    body.querySelectorAll(".line-total").forEach(td => t += parseNum(td.textContent));
+    document.getElementById("grand-total").textContent = t.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  addBtn.addEventListener("click", () => {
+    const i = parseInt(totalForms.value);
+    const tpl = `{{ formset.empty_form.as_p|escapejs }}`.replace(/__prefix__/g, i);
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = tpl;
+
+    tempDiv.querySelectorAll("input, select, textarea").forEach(inp => {
+      inp.removeAttribute("hidden");
+      inp.type = inp.type === "hidden" ? "text" : inp.type;
+      inp.classList.add("form-control", "form-control-sm");
+    });
+
+    const inputMap = {};
+    tempDiv.querySelectorAll("input, select, textarea").forEach(el => {
+      const match = el.name.match(/-(\w+)$/);
+      if (match) inputMap[match[1]] = el;
+    });
+
+    const tr = document.createElement("tr");
+    tr.classList.add("item-row");
+    tr.innerHTML = `
+      <td class="cell-stock"></td>
+      <td class="cell-desc"></td>
+      <td class="cell-qty"></td>
+      <td class="cell-unit"></td>
+      <td class="cell-cost"></td>
+      <td class="line-total text-end">0.00</td>
+      <td class="no-print text-center">
+        <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+      </td>
+    `;
+
+    if (inputMap.stock_no) tr.querySelector(".cell-stock").appendChild(inputMap.stock_no);
+    if (inputMap.description) tr.querySelector(".cell-desc").appendChild(inputMap.description);
+    if (inputMap.quantity) tr.querySelector(".cell-qty").appendChild(inputMap.quantity);
+    if (inputMap.unit) tr.querySelector(".cell-unit").appendChild(inputMap.unit);
+    const costField = inputMap.estimated_unit_cost || inputMap.unit_cost;
+    if (costField) tr.querySelector(".cell-cost").appendChild(costField);
+
+    body.appendChild(tr);
+    totalForms.value = i + 1;
+    lineTotal(tr);
+    grandTotal();
+    tr.querySelector("input, select, textarea")?.focus();
   });
 
-  // Remove row
-  itemBody.addEventListener("click", function (e) {
-    if (e.target && e.target.classList.contains("remove-row")) {
-      e.target.closest("tr").remove();
-      renumberRows();
+  body.addEventListener("click", e => {
+    const btn = e.target.closest(".remove-row");
+    if (!btn) return;
+    btn.closest("tr.item-row").remove();
+    totalForms.value = body.querySelectorAll("tr.item-row").length;
+    grandTotal();
+  });
+
+  body.addEventListener("input", e => {
+    const el = e.target;
+    if (el.name.endsWith("quantity") || el.name.endsWith("unit_cost") || el.name.endsWith("estimated_unit_cost")) {
+      const row = el.closest("tr.item-row");
+      lineTotal(row);
+      grandTotal();
     }
   });
 
-  // Initial numbering
-  renumberRows();
+  body.querySelectorAll("tr.item-row").forEach(lineTotal);
+  grandTotal();
+  printBtn?.addEventListener("click", () => window.print());
 });
 </script>
 

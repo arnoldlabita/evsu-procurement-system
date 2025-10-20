@@ -1,11 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views import generic
+from django.views import generic, View
 from django.contrib import messages
-from django.urls import reverse_lazy, reverse
-from django.db import transaction
+from django.urls import reverse_lazy
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView
+from django.views.generic import DetailView
+from django.views.generic import UpdateView
+
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
@@ -13,13 +16,14 @@ from .models import (
 )
 from .forms import (
     PurchaseRequestForm, PRItemFormSet, SupplierForm,
-    RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm
+    RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm,
+    ProcurementPRForm, AssignPRNumberForm
 )
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.utils.decorators import method_decorator
-from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect
 
+
+# -----------------------
+# USER GROUP CHECKS
+# -----------------------
 def in_procurement_group(user):
     return user.is_authenticated and user.groups.filter(name="Procurement").exists()
 
@@ -30,7 +34,7 @@ def in_requisitioner_group(user):
 # DASHBOARD
 # -----------------------
 class DashboardView(LoginRequiredMixin, generic.TemplateView):
-    template_name = "procurement/dashboard.html"  # default fallback
+    template_name = "procurement/dashboard.html"
 
     def get_template_names(self):
         user = self.request.user
@@ -44,13 +48,14 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["user"] = self.request.user
-        context["pr_count"] = PurchaseRequest.objects.filter(created_by=self.request.user).count()
+        user = self.request.user
+        context["user"] = user
+        context["pr_count"] = PurchaseRequest.objects.filter(created_by=user).count()
         context["rfq_count"] = RequestForQuotation.objects.count()
         context["aoq_count"] = AbstractOfQuotation.objects.count()
         context["po_count"] = PurchaseOrder.objects.count()
 
-        user = self.request.user
+
         if user.groups.filter(name="Procurement").exists():
             context["welcome_text"] = "Procurement Officer Dashboard"
         elif user.groups.filter(name="Requisitioner").exists():
@@ -61,9 +66,9 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
             context["welcome_text"] = "User Dashboard"
 
         return context
-    
+
 # -----------------------
-# PURCHASE REQUEST
+# PURCHASE REQUEST VIEWS
 # -----------------------
 class PRListView(LoginRequiredMixin, generic.ListView):
     model = PurchaseRequest
@@ -71,50 +76,124 @@ class PRListView(LoginRequiredMixin, generic.ListView):
     context_object_name = "prs"
     ordering = ["-created_at"]
 
-
+# -----------------------
+# CREATE PURCHASE REQUEST (REQUISITIONER)
+# -----------------------
 class PRCreateView(LoginRequiredMixin, generic.CreateView):
     model = PurchaseRequest
     form_class = PurchaseRequestForm
     template_name = "procurement/pr_form.html"
 
-    def get(self, request, *args, **kwargs):
-        form = self.form_class()
+    def get(self, request):
+        form = PurchaseRequestForm()
         formset = PRItemFormSet(prefix="form")
-        return render(request, self.template_name, {"form": form, "formset": formset})
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "is_procurement": False,
+        })
 
-    def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST, request.FILES)
+    def post(self, request):
+        form = PurchaseRequestForm(request.POST)
         formset = PRItemFormSet(request.POST, prefix="form")
+
         if form.is_valid() and formset.is_valid():
             pr = form.save(commit=False)
             pr.created_by = request.user
             pr.save()
+
             formset.instance = pr
             formset.save()
+
             messages.success(request, "Purchase Request created successfully.")
             return redirect("procurement:pr_detail", pk=pr.pk)
-        messages.error(request, "Please check the fields below.")
-        return render(request, self.template_name, {"form": form, "formset": formset})
 
+        messages.error(request, "Please correct the errors below.")
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "is_procurement": False,
+        })
 
-class PRDetailView(LoginRequiredMixin, generic.DetailView):
-    model = PurchaseRequest
-    template_name = "procurement/pr_detail.html"
-    context_object_name = "pr"
+def pr_detail(request, pk):
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    items = pr.items.all()
 
+    # Compute total cost per item and grand total
+    for item in items:
+        item.total_cost = (item.quantity or 0) * (item.unit_cost or 0)
+    grand_total = sum(item.total_cost for item in items)
 
+    is_procurement = request.user.groups.filter(name="Procurement").exists()
+
+    return render(request, "procurement/pr_detail.html", {
+        "pr": pr,
+        "items": items,
+        "grand_total": grand_total,
+        "is_procurement": is_procurement,
+    })
+
+# -----------------------
+# PROCUREMENT WORKFLOW VIEW
+# -----------------------
+class PRWorkflowView(LoginRequiredMixin, View):
+    template_name = "procurement/pr_workflow.html"
+
+    def get_object(self, pk=None):
+        if pk:
+            return get_object_or_404(PurchaseRequest, pk=pk)
+        return None
+
+    def get(self, request, pk):
+        pr = self.get_object(pk)
+        form = ProcurementPRForm(instance=pr)
+        formset = PRItemFormSet(instance=pr, prefix="form")
+        is_procurement = request.user.groups.filter(name="Procurement").exists()
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "pr": pr,
+            "is_procurement": is_procurement,
+        })
+
+    def post(self, request, pk):
+        pr = self.get_object(pk)
+        form = ProcurementPRForm(request.POST, instance=pr)
+        formset = PRItemFormSet(request.POST, instance=pr, prefix="form")
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, "Purchase Request updated successfully.")
+            return redirect("procurement:pr_detail", pk=pr.pk)
+
+        messages.error(request, "Please correct the errors below.")
+        is_procurement = request.user.groups.filter(name="Procurement").exists()
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "pr": pr,
+            "is_procurement": is_procurement,
+        })
+
+# -----------------------
+# ASSIGN PR NUMBER
+# -----------------------
 @login_required
+@user_passes_test(in_procurement_group)
 def assign_pr_number(request, pk):
     pr = get_object_or_404(PurchaseRequest, pk=pk)
-    if request.user.is_staff:
-        pr.pr_number = f"PR-{timezone.now().strftime('%Y%m%d')}-{pr.id}"
-        pr.status = "verified"
-        pr.save()
-        messages.success(request, f"Assigned PR number: {pr.pr_number}")
-    else:
-        messages.error(request, "Only procurement staff can assign PR numbers.")
-    return redirect("procurement:pr_detail", pk=pk)
 
+    if request.method == 'POST':
+        form = AssignPRNumberForm(request.POST, instance=pr)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "PR Number and Date saved successfully!")
+            return redirect('procurement:pr_detail', pk=pr.pk)
+    else:
+        form = AssignPRNumberForm(instance=pr)
+
+    return render(request, 'procurement/assign_pr_number.html', {'form': form, 'pr': pr})
 
 # -----------------------
 # SUPPLIERS
@@ -133,7 +212,7 @@ class SupplierCreateView(LoginRequiredMixin, generic.CreateView):
 
 
 # -----------------------
-# RFQ / APR CREATION
+# RFQ / APR
 # -----------------------
 @login_required
 def create_rfq(request, pr_id):
@@ -145,24 +224,12 @@ def create_rfq(request, pr_id):
             rfq.purchase_request = pr
             rfq.created_by = request.user
             rfq.save()
-            messages.success(request, "RFQ created.")
+            messages.success(request, "RFQ created successfully.")
             return redirect("procurement:rfq_preview", pk=rfq.pk)
     else:
         form = RFQForm()
     return render(request, "procurement/create_rfq.html", {"form": form, "pr": pr})
 
-
-class RFQPreviewView(LoginRequiredMixin, generic.DetailView):
-    model = RequestForQuotation
-    template_name = "procurement/rfq_preview.html"
-    context_object_name = "rfq"
-
-class RFQListView(LoginRequiredMixin, generic.ListView):
-    model = RequestForQuotation
-    template_name = "procurement/rfq_list.html"
-    context_object_name = "rfqs"
-    ordering = ["-id"]
-    
 @login_required
 def create_apr(request, pr_id):
     pr = get_object_or_404(PurchaseRequest, id=pr_id)
@@ -173,7 +240,7 @@ def create_apr(request, pr_id):
             apr.purchase_request = pr
             apr.created_by = request.user
             apr.save()
-            messages.success(request, "APR created.")
+            messages.success(request, "APR created successfully.")
             return redirect("procurement:pr_detail", pk=pr.pk)
     else:
         form = APRForm()
@@ -202,6 +269,7 @@ class AOQDetailView(LoginRequiredMixin, generic.DetailView):
     model = AbstractOfQuotation
     template_name = "procurement/aoq_detail.html"
     context_object_name = "aoq"
+
 
 class AOQListView(LoginRequiredMixin, generic.ListView):
     model = AbstractOfQuotation
@@ -246,19 +314,9 @@ class PODetailView(LoginRequiredMixin, generic.DetailView):
     template_name = "procurement/po_detail.html"
     context_object_name = "po"
 
-def get_template_names(self):
-    user = self.request.user
-    if user.groups.filter(name="Admin").exists():
-        return ["procurement/dashboard_admin.html"]
-    elif user.groups.filter(name="Procurement").exists():
-        return ["procurement/dashboard_procurement.html"]
-    elif user.groups.filter(name="Requisitioner").exists():
-        return ["procurement/dashboard_requisitioner.html"]
-    return ["procurement/dashboard_unauthorized.html"]
-
-from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect
-
+# -----------------------
+# LOGIN VIEW
+# -----------------------
 class EVSULoginView(LoginView):
     template_name = "registration/login.html"
 
@@ -266,3 +324,90 @@ class EVSULoginView(LoginView):
         if request.user.is_authenticated:
             return redirect("procurement:dashboard")
         return super().dispatch(request, *args, **kwargs)
+
+# -----------------------
+# RFQ LIST & PREVIEW
+# -----------------------
+class RFQListView(LoginRequiredMixin, generic.ListView):
+    model = RequestForQuotation
+    template_name = "procurement/rfq_list.html"
+    context_object_name = "rfqs"
+    ordering = ["-id"]
+
+class RFQPreviewView(LoginRequiredMixin, generic.DetailView):
+    model = RequestForQuotation
+    template_name = "procurement/rfq_preview.html"
+    context_object_name = "rfq"
+
+class PRDetailView(LoginRequiredMixin, generic.DetailView):
+    model = PurchaseRequest
+    template_name = "procurement/pr_detail.html"
+    context_object_name = "pr"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pr = self.object
+        # Compute grand total here
+        grand_total = sum(
+            (item.quantity * item.estimated_unit_cost)
+            for item in pr.items.all()
+        )
+        context["grand_total"] = grand_total
+        return context
+
+# Update View
+
+class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
+    model = PurchaseRequest
+    form_class = PurchaseRequestForm
+    template_name = "procurement/pr_form.html"
+
+    def get(self, request, *args, **kwargs):
+        pr = self.get_object()
+        form = self.form_class(instance=pr)
+        formset = PRItemFormSet(instance=pr, prefix="form")
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "edit_mode": True,
+            "pr": pr
+        })
+
+    def post(self, request, *args, **kwargs):
+        pr = self.get_object()
+        form = self.form_class(request.POST, request.FILES, instance=pr)
+        formset = PRItemFormSet(request.POST, instance=pr, prefix="form")
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, f"Purchase Request {pr.pr_number or pr.id} updated successfully.")
+            return redirect("procurement:pr_detail", pk=pr.pk)
+
+        messages.error(request, "Please correct the errors below.")
+        return render(request, self.template_name, {
+            "form": form,
+            "formset": formset,
+            "edit_mode": True,
+            "pr": pr
+        })
+
+@login_required
+def submit_pr_for_verification(request, pk):
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+
+    # Only allow Requisitioners to submit
+    if not request.user.groups.filter(name="Requisitioner").exists():
+        messages.error(request, "You are not authorized to submit this request.")
+        return redirect("procurement:pr_detail", pk=pk)
+
+    # Only submit if still in draft
+    if pr.status != "draft":
+        messages.warning(request, "This request has already been submitted.")
+        return redirect("procurement:pr_detail", pk=pk)
+
+    # Update status
+    pr.status = "submitted"
+    pr.save()
+    messages.success(request, f"Purchase Request {pr.pr_number or pr.id} has been submitted for verification.")
+    return redirect("procurement:pr_detail", pk=pk)

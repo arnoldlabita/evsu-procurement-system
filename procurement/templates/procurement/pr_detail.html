@@ -1,33 +1,111 @@
 {% extends "procurement/base.html" %}
+{% load group_tags %}
+{% load humanize %}
 {% block content %}
-<h3>Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}</h3>
-<p><strong>Office:</strong> {{ pr.requesting_office }}</p>
-<p><strong>Purpose:</strong> {{ pr.purpose }}</p>
-<table class="table table-bordered table-maroon">
-<thead><tr><th>Stock</th><th>Description</th><th>Qty</th><th>Unit</th><th>Est. Cost</th></tr></thead>
-<tbody>
-{% for i in pr.items.all %}
-<tr><td>{{ i.stock_no }}</td><td>{{ i.description }}</td><td>{{ i.quantity }}</td><td>{{ i.unit }}</td><td>{{ i.estimated_unit_cost }}</td></tr>
-{% endfor %}
-</tbody>
-</table>
 
-<div class="no-print">
-  {% if user.is_staff %}
-  <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Assign PR Number</a>
+<div class="container mt-4">
+  <h2 class="text-maroon fw-bold">Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}</h2>
+
+  <div class="card shadow-sm p-3 mb-3">
+    <p><strong>Requesting Office:</strong> {{ pr.requesting_office }}</p>
+    <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
+    {% if pr.attachments %}
+      <p><strong>Attachment:</strong> 
+        <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
+      </p>
+    {% endif %}
+    <p>
+      <strong>Status:</strong>
+      <span class="badge 
+        {% if pr.status == 'verified' %}bg-success
+        {% elif pr.status == 'submitted' %}bg-primary
+        {% else %}bg-secondary{% endif %}">
+        {{ pr.status|capfirst }}
+      </span>
+    </p>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-maroon text-white">
+        <tr>
+          <th>#</th>
+          <th>Unit</th>
+          <th>Item Description</th>
+          <th class="text-end">Qty</th>
+          <th class="text-end">Unit Cost (₱)</th>
+          <th class="text-end">Total Cost (₱)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in pr.items.all %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="text-end">{{ item.quantity|floatformat:0|intcomma }}</td>
+            <td>{{ item.description }}</td>
+            <td>{{ item.unit }}</td>
+            <td class="text-end">{{ item.unit_cost|floatformat:2 |intcomma}}</td>
+            <td class="text-end">{{ item.total_cost|floatformat:2 |intcomma}}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted">No items found for this PR.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" class="text-end fw-bold">Grand Total (₱)</td>
+          <td class="text-end fw-bold">{{ grand_total|floatformat:2 |intcomma}}</td>
+            {% with total=0 %}
+              {% for item in pr.items.all %}
+                {% with total=total|add:item.total_cost %}
+                {% endwith %}
+              {% endfor %}
+              {{ total|floatformat:2 }}
+            {% endwith %}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="mt-3 d-flex flex-wrap gap-2 no-print">
+{% if user|has_group:"Requisitioner" %}
+  {% if pr.status == 'draft' %}
+    <a href="{% url 'procurement:pr_edit' pr.pk %}" class="btn btn-outline-maroon">Edit Request</a>
+
+    <form method="post" action="{% url 'procurement:submit_pr' pr.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-maroon">Submit for Verification</button>
+    </form>
   {% endif %}
-  {% if pr.pr_number %}
-  <a href="#" onclick="window.print()" class="btn btn-primary">Print</a>
-  <a href="{% url 'procurement:create_rfq' pr.id %}" class="btn btn-secondary">Create RFQ</a>
-  <a href="{% url 'procurement:create_apr' pr.id %}" class="btn btn-secondary">Create APR</a>
-  {% endif %}
+{% endif %}
+
+    {% if user|has_group:"Procurement" %}
+      {% if not pr.pr_number %}
+        <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
+      {% endif %}
+      <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
+      <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
+    {% endif %}
+
+    <!-- ✅ Shared Print Button -->
+    <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+  </div>
 </div>
+
+<style>
+.text-maroon { color: #800000; }
+.btn-maroon { background-color: #800000; color: white; border: none; }
+.btn-maroon:hover { background-color: #a30000; }
+.btn-outline-maroon { border: 1px solid #800000; color: #800000; }
+.btn-outline-maroon:hover { background-color: #800000; color: white; }
+.table-maroon { background-color: #800000; }
+@media print {
+  .btn, .no-print, .navbar, footer { display: none !important; }
+  body { background: white; }
+}
+</style>
+
 {% endblock %}
-
-{% if user.groups.all|length and user.groups.all|join:","|contains:"Procurement" %}
-   <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Verify & Assign PR Number</a>
-{% endif %}
-
-{% if user.groups.filter(name="Procurement").exists %}
-  <a href="{% url 'procurement:pr_assign_number' pr.id %}" class="btn btn-success">Assign PR Number</a>
-{% endif %}

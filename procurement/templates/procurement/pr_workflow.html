@@ -1,0 +1,211 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Purchase Request Workflow — EVSU Procurement</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{ --maroon:#800000; --muted:#6c757d; }
+    body{ background:#f4f5f7; font-family:'Segoe UI',sans-serif; padding:20px; }
+    .pr-card{ background:#fff; max-width:1100px; margin:0 auto; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.05); padding:20px; }
+    .pr-header{ display:flex; gap:16px; align-items:center; border-bottom:6px solid var(--maroon); padding-bottom:8px; }
+    .pr-header img{ width:80px; height:auto; }
+    .pr-header h1{ color:var(--maroon); font-size:22px; margin:0; }
+    table.items{ width:100%; border-collapse:collapse; margin-top:16px; }
+    table.items th{ background:var(--maroon); color:#fff; font-size:14px; padding:10px 8px; }
+    table.items td{ border:1px solid #eee; padding:8px; }
+    input,select,textarea{ width:100%; border:1px solid #ccc; border-radius:4px; padding:6px 8px; font-size:14px; }
+    .btn-maroon{ background:var(--maroon); color:#fff; border:none; }
+    .btn-outline-maroon{ color:var(--maroon); border:1px solid var(--maroon); }
+    @media print{ .no-print{display:none!important;} body{background:white;} .pr-card{box-shadow:none;} }
+  </style>
+</head>
+<body>
+
+<div class="pr-card">
+  <div class="pr-header">
+    <img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo">
+    <h1>PURCHASE REQUEST WORKFLOW</h1>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="prForm">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <!-- PR Details -->
+    <h5 class="mt-3">PR Details</h5>
+    <div class="row mt-2">
+      <div class="col-md-6 mb-2">
+        {{ form.requesting_office.label_tag }}
+        {% if not is_procurement %}
+          {{ form.requesting_office }}
+        {% else %}
+          <input type="text" class="form-control" value="{{ form.requesting_office.value }}" readonly>
+        {% endif %}
+      </div>
+      <div class="col-md-6 mb-2">
+        {{ form.purpose.label_tag }}
+        {% if not is_procurement %}
+          {{ form.purpose }}
+        {% else %}
+          <textarea class="form-control" readonly>{{ form.purpose.value }}</textarea>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Procurement-only fields -->
+    {% if is_procurement %}
+    <h5 class="mt-4">Assign PR Number & Date</h5>
+    <div class="row mt-2">
+      <div class="col-md-6 mb-2">
+        {{ form.pr_number.label_tag }} {{ form.pr_number }}
+      </div>
+      <div class="col-md-6 mb-2">
+        {{ form.date.label_tag }} {{ form.date }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- PR Items Formset -->
+    <h5 class="mt-4">Items</h5>
+    {{ formset.management_form }}
+
+    <table class="items" id="item-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Description</th>
+          <th>Quantity</th>
+          <th>Unit</th>
+          <th>Unit Cost (₱)</th>
+          <th>Total (₱)</th>
+          <th class="no-print"></th>
+        </tr>
+      </thead>
+      <tbody id="formset-body">
+        {% for subform in formset %}
+        <tr class="item-row">
+          <td class="row-index">{{ forloop.counter }}</td>
+          {% if not is_procurement %}
+            <td>{{ subform.description }}</td>
+            <td>{{ subform.quantity }}</td>
+            <td>{{ subform.unit }}</td>
+            <td>{{ subform.unit_cost }}</td>
+          {% else %}
+            <td><input class="form-control" value="{{ subform.description.value }}" readonly></td>
+            <td><input class="form-control" value="{{ subform.quantity.value }}" readonly></td>
+            <td><input class="form-control" value="{{ subform.unit.value }}" readonly></td>
+            <td><input class="form-control" value="{{ subform.unit_cost.value }}" readonly></td>
+          {% endif %}
+          <td class="line-total text-end">{{ subform.instance.total_cost|default:"0.00" }}</td>
+          <td class="no-print text-center">
+            {% if not is_procurement %}
+              <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" class="text-end">Grand Total</td>
+          <td id="grand-total" class="text-end">0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    {% if not is_procurement %}
+    <div class="no-print mt-2">
+      <button type="button" id="add-row" class="btn btn-outline-maroon btn-sm">+ Add Item</button>
+      <button type="button" id="print-btn" class="btn btn-maroon btn-sm">Print</button>
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-end mt-3 no-print">
+      <button type="submit" class="btn btn-maroon btn-sm">Save</button>
+    </div>
+  </form>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const formsetBody = document.getElementById("formset-body");
+  const addRowBtn = document.getElementById("add-row");
+  const totalForms = document.querySelector("#id_form-TOTAL_FORMS");
+  const printBtn = document.getElementById("print-btn");
+
+  function updateLineTotal(row) {
+    const qty = parseFloat(row.querySelector('input[name$="quantity"]')?.value) || 0;
+    const cost = parseFloat(row.querySelector('input[name$="unit_cost"]')?.value) || 0;
+    row.querySelector(".line-total").textContent = (qty * cost).toFixed(2);
+  }
+
+  function updateGrandTotal() {
+    let total = 0;
+    document.querySelectorAll(".line-total").forEach(td => { total += parseFloat(td.textContent) || 0; });
+    document.getElementById("grand-total").textContent = total.toFixed(2);
+  }
+
+  function renumber() {
+    [...formsetBody.querySelectorAll("tr.item-row")].forEach((tr, i) => {
+      tr.querySelector(".row-index").textContent = i + 1;
+    });
+  }
+
+  if (addRowBtn) {
+    addRowBtn.addEventListener("click", () => {
+      const formIndex = parseInt(totalForms.value);
+      const emptyFormHtml = `{{ formset.empty_form.as_table|escapejs }}`;
+      const newRow = document.createElement("tr");
+      newRow.classList.add("item-row");
+      newRow.innerHTML = emptyFormHtml
+        .replace(/__prefix__/g, formIndex)
+        .replace(/<tr>|<\/tr>/g, "");
+      newRow.innerHTML = `
+        <td class="row-index">${formIndex + 1}</td>
+        <td>${newRow.querySelector('[name$="description"]').outerHTML}</td>
+        <td>${newRow.querySelector('[name$="quantity"]').outerHTML}</td>
+        <td>${newRow.querySelector('[name$="unit"]').outerHTML}</td>
+        <td>${newRow.querySelector('[name$="unit_cost"]').outerHTML}</td>
+        <td class="line-total text-end">0.00</td>
+        <td class="no-print text-center">
+          <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+        </td>
+      `;
+      formsetBody.appendChild(newRow);
+      totalForms.value = formIndex + 1;
+      renumber();
+    });
+  }
+
+  formsetBody.addEventListener("click", e => {
+    if (e.target.classList.contains("remove-row")) {
+      e.target.closest("tr").remove();
+      totalForms.value = document.querySelectorAll("tr.item-row").length;
+      renumber();
+      updateGrandTotal();
+    }
+  });
+
+  formsetBody.addEventListener("input", e => {
+    if (e.target.name.endsWith("quantity") || e.target.name.endsWith("unit_cost")) {
+      const row = e.target.closest("tr");
+      updateLineTotal(row);
+      updateGrandTotal();
+    }
+  });
+
+  if (printBtn) printBtn.addEventListener("click", () => window.print());
+});
+</script>
+</body>
+</html>

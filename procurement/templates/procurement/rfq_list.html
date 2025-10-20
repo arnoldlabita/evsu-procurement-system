@@ -1,0 +1,43 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3 class="text-center mb-4">Request for Quotation (RFQ) List</h3>
+
+  {% if rfqs %}
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">RFQ No.</th>
+        <th scope="col">Date</th>
+        <th scope="col">PR No.</th>
+        <th scope="col">Department / Office</th>
+        <th scope="col" class="text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rfq in rfqs %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ rfq.id }}</td>
+        <td>{{ rfq.date|date:"M d, Y" }}</td>
+        <td>{{ rfq.purchase_request.pr_number }}</td>
+        <td>{{ rfq.purchase_request.department }}</td>
+        <td class="text-center">
+          <a href="{% url 'procurement:rfq_preview' rfq.id %}" class="btn btn-sm btn-primary">
+            Preview
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="alert alert-info text-center">
+    No Request for Quotation records found.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

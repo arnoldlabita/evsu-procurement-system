@@ -58,3 +58,9 @@ body {
   text-align: center;
   font-weight: 600;
 }
+
+td.line-total, #grand-total {
+  text-align: right;
+  font-weight: 600;
+}
+

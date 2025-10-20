@@ -7,7 +7,7 @@ class PRItemInline(admin.TabularInline):
 
 @admin.register(PRItem)
 class PRItemAdmin(admin.ModelAdmin):
-    list_display = ("description", "quantity", "unit", "estimated_unit_cost")
+    list_display = ("description", "quantity", "unit", "unit_cost")
     
 @admin.register(PurchaseRequest)
 class PurchaseRequestAdmin(admin.ModelAdmin):
