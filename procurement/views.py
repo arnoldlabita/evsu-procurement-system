@@ -118,23 +118,7 @@ class PRCreateView(LoginRequiredMixin, generic.CreateView):
         })
 
 
-def pr_detail(request, pk):
-    pr = get_object_or_404(PurchaseRequest, pk=pk)
-    items = pr.items.all()
 
-    # Compute total cost per item and grand total
-    for item in items:
-        item.total_cost = (item.quantity or 0) * (item.unit_cost or 0)
-    grand_total = sum(item.total_cost for item in items)
-
-    is_procurement = request.user.groups.filter(name="Procurement").exists()
-
-    return render(request, "procurement/pr_detail.html", {
-        "pr": pr,
-        "items": items,
-        "grand_total": grand_total,
-        "is_procurement": is_procurement,
-    })
 
 # -----------------------
 # PROCUREMENT WORKFLOW VIEW
@@ -187,16 +171,17 @@ class PRWorkflowView(LoginRequiredMixin, View):
 def assign_pr_number(request, pk):
     pr = get_object_or_404(PurchaseRequest, pk=pk)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AssignPRNumberForm(request.POST, instance=pr)
         if form.is_valid():
             form.save()
-            messages.success(request, "PR Number and Date saved successfully!")
-            return redirect('procurement:pr_detail', pk=pr.pk)
+            messages.success(request, f"PR {pr.pr_number} assigned successfully.")
+            return redirect("procurement:pr_detail", pk=pr.pk)
     else:
         form = AssignPRNumberForm(instance=pr)
 
-    return render(request, 'procurement/assign_pr_number.html', {'form': form, 'pr': pr})
+    return render(request, "procurement/assign_pr_number.html", {"form": form, "pr": pr})
+
 
 # -----------------------
 # SUPPLIERS
@@ -357,13 +342,13 @@ class PRDetailView(LoginRequiredMixin, generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         pr = self.object
-        # Compute grand total here
         grand_total = sum(
-            (item.quantity * item.unit_cost)
+            (item.quantity or 0) * (item.unit_cost or 0)
             for item in pr.items.all()
         )
         context["grand_total"] = grand_total
         return context
+
 
 # Update View
 
@@ -413,6 +398,28 @@ class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
             "edit_mode": True,
             "pr": pr
         })
+
+from django.shortcuts import render, get_object_or_404
+
+@login_required
+def pr_preview(request, pk):
+    """Print-friendly view of the Purchase Request."""
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    # compute grand total manually
+    total_amount = sum(
+        (item.quantity or 0) * (item.unit_cost or 0)
+        for item in pr.items.all()
+    )
+
+    return render(
+        request,
+        "procurement/pr_preview.html",
+        {
+            "pr": pr,
+            "total_amount": total_amount,  # ✅ now available in the template
+        }
+    )
+
 
 
 @login_required
@@ -476,3 +483,10 @@ def update_pr_status(request, pk):
 
     # GET → render modal version directly if ever visited by URL
     return render(request, "procurement/update_pr_status.html", {"pr": pr})
+
+@login_required
+def pr_preview(request, pk):
+    """Print-friendly view of the Purchase Request."""
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    return render(request, "procurement/pr_preview.html", {"pr": pr, "auto_print": True})
+

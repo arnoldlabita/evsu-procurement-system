@@ -4,99 +4,107 @@
 {% block content %}
 
 <div class="container mt-4">
-  <h2 class="text-maroon fw-bold">Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}</h2>
+  <h2 class="text-maroon fw-bold">
+    Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}
+  </h2>
 
-<div class="card shadow-sm p-3 mb-3">
-  <p><strong>Requisitioner:</strong> {{ pr.requisitioner }}</p>
-  <p><strong>Designation:</strong> {{ pr.designation }}</p>
-  <p><strong>Office/Section:</strong> {{ pr.office_section }}</p>
-  <p><strong>Funding:</strong> {{ pr.funding }}</p>
-  <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
-  {% if pr.attachments %}
-    <p><strong>Attachment:</strong> 
-      <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
-    </p>
-  {% endif %}
-</div>
-    <p>
-      <strong>Status:</strong>
-      <span class="badge 
-        {% if pr.status == 'verified' %}bg-success
-        {% elif pr.status == 'submitted' %}bg-primary
-        {% else %}bg-secondary{% endif %}">
-        {{ pr.status|capfirst }}
-      </span>
-    </p>
+  <div class="card shadow-sm p-3 mb-3">
+    <p><strong>Requisitioner:</strong> {{ pr.requisitioner }}</p>
+    <p><strong>Designation:</strong> {{ pr.designation }}</p>
+    <p><strong>Office/Section:</strong> {{ pr.office_section }}</p>
+    <p><strong>Funding:</strong> {{ pr.funding }}</p>
+    <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
+    {% if pr.attachments %}
+      <p><strong>Attachment:</strong>
+        <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
+      </p>
+    {% endif %}
   </div>
 
-<div class="table-responsive">
-  <table class="table table-bordered align-middle">
-    <thead class="table-maroon text-white text-center">
-      <tr>
-        <th>Stock No.</th>
-        <th>Unit</th>
-        <th>Item Description</th>
-        <th>Qty</th>
-        <th class="text-end">Unit Cost</th>
-        <th class="text-end">Total Cost</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in pr.items.all %}
+  <p>
+    <strong>Status:</strong>
+    <span class="badge 
+      {% if pr.status == 'verified' %}bg-success
+      {% elif pr.status == 'submitted' %}bg-primary
+      {% else %}bg-secondary{% endif %}">
+      {{ pr.status|capfirst }}
+    </span>
+  </p>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-maroon text-white text-center">
         <tr>
-          <td class="text-center">{{ forloop.counter }}</td>
-          <td class="text-center">{{ item.unit }}</td>
-          <td>{{ item.description }}</td>
-          <td class="text-center">{{ item.quantity|floatformat:0|intcomma }}</td>
-          <td class="text-end">{{ item.unit_cost|floatformat:2|intcomma }}</td>
-          <td class="text-end">{{ item.total_cost|floatformat:2|intcomma }}</td>
+          <th>Stock No.</th>
+          <th>Unit</th>
+          <th>Item Description</th>
+          <th>Qty</th>
+          <th class="text-end">Unit Cost</th>
+          <th class="text-end">Total Cost</th>
         </tr>
-      {% empty %}
+      </thead>
+      <tbody>
+        {% for item in pr.items.all %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td class="text-center">{{ item.unit }}</td>
+            <td>{{ item.description }}</td>
+            <td class="text-center">{{ item.quantity|floatformat:0|intcomma }}</td>
+            <td class="text-end">{{ item.unit_cost|floatformat:2|intcomma }}</td>
+            <td class="text-end">{{ item.total_cost|floatformat:2|intcomma }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted">No items found for this PR.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
         <tr>
-          <td colspan="6" class="text-center text-muted">No items found for this PR.</td>
+          <td colspan="5" class="text-end fw-bold">Grand Total (₱)</td>
+          <td class="text-end fw-bold">₱ {{ grand_total|floatformat:2|intcomma }}</td>
         </tr>
-      {% endfor %}
-    </tbody>
-<tfoot>
-  <tr>
-    <td colspan="5" class="text-end fw-bold">Grand Total (₱)</td>
-    <td class="text-end fw-bold">₱ {{ grand_total|floatformat:2|intcomma }}</td>
-  </tr>
-</tfoot>
-  </table>
-</div>
+      </tfoot>
+    </table>
+  </div>
 
   <div class="mt-3 d-flex flex-wrap gap-2 no-print">
-{% if user|has_group:"Requisitioner" %}
-  {% if pr.status == 'draft' %}
-    <a href="{% url 'procurement:pr_edit' pr.pk %}" class="btn btn-outline-maroon">Edit Request</a>
+    {% if user|has_group:"Requisitioner" %}
+      {% if pr.status == 'draft' %}
+        <a href="{% url 'procurement:pr_edit' pr.pk %}" class="btn btn-outline-maroon">Edit Request</a>
+        <form method="post" action="{% url 'procurement:submit_pr' pr.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-maroon">Submit for Verification</button>
+        </form>
+      {% endif %}
+    {% endif %}
 
-    <form method="post" action="{% url 'procurement:submit_pr' pr.pk %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-maroon">Submit for Verification</button>
-    </form>
-  {% endif %}
-{% endif %}
+    {% if user|has_group:"Procurement" %}
+      {% if not pr.pr_number %}
+        <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
+      {% endif %}
+      <button type="button" class="btn btn-outline-maroon" data-bs-toggle="modal" data-bs-target="#statusModal">
+        Update Status
+      </button>
+      <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
+      <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
 
-{% if user|has_group:"Procurement" %}
-  {% if not pr.pr_number %}
-    <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
-  {% endif %}
-  <button type="button" class="btn btn-outline-maroon" data-bs-toggle="modal" data-bs-target="#statusModal">
-    Update Status
-  </button>
-  <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
-  <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
+      {% if pr.notes %}
+        <p><strong>Last Update:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
+        <p><strong>Staff Note:</strong> {{ pr.notes }}</p>
+      {% endif %}
+    {% endif %}
 
-  {% if pr.notes %}
-    <p><strong>Last Update:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
-    <p><strong>Staff Note:</strong> {{ pr.notes }}</p>
-  {% endif %}
-{% endif %}
-
-<!-- ✅ Shared Print Button -->
-<button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
-
+    <!-- ✅ Print Button appears only if PR number exists -->
+    {% if pr.pr_number %}
+      <a href="{% url 'procurement:pr_preview' pr.id %}" target="_blank" class="btn btn-outline-dark">
+        🖨️ Print PR
+      </a>
+    {% else %}
+      <button class="btn btn-secondary" disabled title="Assign PR number first">
+        🖨️ Print PR
+      </button>
+    {% endif %}
   </div>
 </div>
 
@@ -113,6 +121,7 @@
 }
 </style>
 
+<!-- Modal for status update -->
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">

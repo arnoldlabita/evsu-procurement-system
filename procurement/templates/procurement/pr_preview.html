@@ -1,0 +1,157 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purchase Request</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 13px;
+      color: #000;
+      background: #fff;
+      margin: 40px 50px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: middle;
+    }
+
+    th {
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .no-border td {
+      border: none;
+      padding: 2px 6px;
+    }
+
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .fw-bold { font-weight: bold; }
+
+    .signature-block td {
+      border: 1px solid #000;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    .no-print {
+      margin-bottom: 10px;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Print Button -->
+  <div class="no-print right mb-3">
+    <button onclick="window.print()">🖨️ Print PR</button>
+  </div>
+
+  <!-- Header -->
+  <p style="font-size:12px; float:right; margin-top:-20px;"><em>Appendix 60</em></p>
+  <div class="center" style="margin-top:40px;">
+    <h3 style="margin-bottom:40px;">PURCHASE REQUEST</h3>
+  </div>
+<div style="display: flex; justify-content: space-between; width: 74%;">
+  <div>Entity Name: _________________________</div>
+  <div>Fund Cluster: _________________________</div>
+</div>
+  <!-- Header Table -->
+  <table style="margin-top:0px;">
+    <tr>
+      <td>Office/Section: {{ pr.office_section }}</td>
+      <td>PR No.: {{ pr.pr_number }}</td>
+    </tr>
+    <tr>
+      <td>Responsibility Center Code: ____________</td>
+      <td>Date: {{ pr.pr_date|date:"F d, Y" }}</td>
+    </tr>
+  </table>
+
+  <!-- Items Table -->
+  <table style="margin-top:10px;">
+    <thead>
+      <tr>
+        <th style="width:12%;">Stock/ Property No.</th>
+        <th style="width:8%;">Unit</th>
+        <th style="width:40%;">Item Description</th>
+        <th style="width:10%;">Quantity</th>
+        <th style="width:15%;">Unit Cost</th>
+        <th style="width:15%;">Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in pr.items.all %}
+      <tr>
+        <td class="center">{{ forloop.counter }}</td>
+        <td class="center">{{ item.unit }}</td>
+        <td>{{ item.description }}</td>
+        <td class="center">{{ item.quantity }}</td>
+        <td class="right">{{ item.unit_cost|floatformat:2|intcomma }}</td>
+        <td class="right">{{ item.total_cost|floatformat:2|intcomma }}</td>
+      </tr>
+      {% empty %}
+      {% for i in "123456789"|make_list %}
+      <tr>
+        <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Purpose -->
+  <p style="margin-top:10px;"><strong>Purpose:</strong> <u>{{ pr.purpose }}</u></p>
+
+  <!-- Signatory Section -->
+  <table class="signature-block" style="margin-top:15px;">
+    <tr>
+      <td style="width:50%;">
+        <strong>Requested by:</strong><br><br>
+        Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;___________________________<br>
+        Printed Name:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong><u>{{ pr.requisitioner }}</u></strong><br>
+        Designation: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<u>{{ pr.designation }}</u>
+      </td>
+      <td style="width:50%;">
+        <strong>Approved by:</strong><br><br>
+        Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;________________________<br>
+        Printed Name:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong><u>DENNIS C. DE PAZ, Ph.D.</u></strong><br>
+        Designation:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<u>University President</u>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Fund Source Section -->
+  <table class="no-border" style="margin-top:10px;">
+    <tr>
+      <td style="width:70%;"></td>
+      <td style="width:30%;">
+        <p>P.R. Charge to: <strong>{{ pr.funding }}</strong></p>
+        <p>Total Amount: <strong>₱ {{ pr.total_amount|floatformat:2|intcomma }}</strong></p>
+        <br>
+        <div class="center">
+        <p><strong><u>EVONE MAE KARMELLE P. BARANDA, CPA</u></strong><br>
+        OIC Head Budget Office
+        </div>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

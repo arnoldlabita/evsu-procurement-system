@@ -8,7 +8,7 @@ from .views import (
     PRWorkflowView,
     PRCreateView,
     assign_pr_number,
-    pr_detail,
+    PRDetailView,
     RFQListView,
     RFQPreviewView,
     create_rfq,
@@ -36,11 +36,12 @@ urlpatterns = [
     path("prs/<int:pk>/submit/", views.submit_pr_for_verification, name="submit_pr"),
     path("prs/", PRListView.as_view(), name="pr_list"),
     path("prs/new/", PRCreateView.as_view(), name="pr_create"),
-    path("prs/<int:pk>/", pr_detail, name="pr_detail"),
+    path("prs/<int:pk>/", views.PRDetailView.as_view(), name="pr_detail"),
     path("prs/<int:pk>/workflow/", PRWorkflowView.as_view(), name="pr_workflow"),
     path('prs/<int:pk>/assign/', views.assign_pr_number, name='assign_pr_number'),
     path("prs/<int:pk>/edit/", views.PRUpdateView.as_view(), name="pr_edit"),
     path("pr/<int:pk>/update-status/", views.update_pr_status, name="update_pr_status"),
+    path("prs/<int:pk>/preview/", views.pr_preview, name="pr_preview"),
 
     # ----------------------------
     # Requests for Quotation (RFQ)
