@@ -6,14 +6,18 @@
 <div class="container mt-4">
   <h2 class="text-maroon fw-bold">Purchase Request {{ pr.pr_number|default:"(Unassigned)" }}</h2>
 
-  <div class="card shadow-sm p-3 mb-3">
-    <p><strong>Requesting Office:</strong> {{ pr.requesting_office }}</p>
-    <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
-    {% if pr.attachments %}
-      <p><strong>Attachment:</strong> 
-        <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
-      </p>
-    {% endif %}
+<div class="card shadow-sm p-3 mb-3">
+  <p><strong>Requisitioner:</strong> {{ pr.requisitioner }}</p>
+  <p><strong>Designation:</strong> {{ pr.designation }}</p>
+  <p><strong>Office/Section:</strong> {{ pr.office_section }}</p>
+  <p><strong>Funding:</strong> {{ pr.funding }}</p>
+  <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
+  {% if pr.attachments %}
+    <p><strong>Attachment:</strong> 
+      <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
+    </p>
+  {% endif %}
+</div>
     <p>
       <strong>Status:</strong>
       <span class="badge 
@@ -25,50 +29,42 @@
     </p>
   </div>
 
-  <div class="table-responsive">
-    <table class="table table-bordered align-middle">
-      <thead class="table-maroon text-white">
+<div class="table-responsive">
+  <table class="table table-bordered align-middle">
+    <thead class="table-maroon text-white text-center">
+      <tr>
+        <th>Stock No.</th>
+        <th>Unit</th>
+        <th>Item Description</th>
+        <th>Qty</th>
+        <th class="text-end">Unit Cost</th>
+        <th class="text-end">Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in pr.items.all %}
         <tr>
-          <th>#</th>
-          <th>Unit</th>
-          <th>Item Description</th>
-          <th class="text-end">Qty</th>
-          <th class="text-end">Unit Cost (₱)</th>
-          <th class="text-end">Total Cost (₱)</th>
+          <td class="text-center">{{ forloop.counter }}</td>
+          <td class="text-center">{{ item.unit }}</td>
+          <td>{{ item.description }}</td>
+          <td class="text-center">{{ item.quantity|floatformat:0|intcomma }}</td>
+          <td class="text-end">{{ item.unit_cost|floatformat:2|intcomma }}</td>
+          <td class="text-end">{{ item.total_cost|floatformat:2|intcomma }}</td>
         </tr>
-      </thead>
-      <tbody>
-        {% for item in pr.items.all %}
-          <tr>
-            <td>{{ forloop.counter }}</td>
-            <td class="text-end">{{ item.quantity|floatformat:0|intcomma }}</td>
-            <td>{{ item.description }}</td>
-            <td>{{ item.unit }}</td>
-            <td class="text-end">{{ item.unit_cost|floatformat:2 |intcomma}}</td>
-            <td class="text-end">{{ item.total_cost|floatformat:2 |intcomma}}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="6" class="text-center text-muted">No items found for this PR.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
+      {% empty %}
         <tr>
-          <td colspan="5" class="text-end fw-bold">Grand Total (₱)</td>
-          <td class="text-end fw-bold">{{ grand_total|floatformat:2 |intcomma}}</td>
-            {% with total=0 %}
-              {% for item in pr.items.all %}
-                {% with total=total|add:item.total_cost %}
-                {% endwith %}
-              {% endfor %}
-              {{ total|floatformat:2 }}
-            {% endwith %}
-          </td>
+          <td colspan="6" class="text-center text-muted">No items found for this PR.</td>
         </tr>
-      </tfoot>
-    </table>
-  </div>
+      {% endfor %}
+    </tbody>
+<tfoot>
+  <tr>
+    <td colspan="5" class="text-end fw-bold">Grand Total (₱)</td>
+    <td class="text-end fw-bold">₱ {{ grand_total|floatformat:2|intcomma }}</td>
+  </tr>
+</tfoot>
+  </table>
+</div>
 
   <div class="mt-3 d-flex flex-wrap gap-2 no-print">
 {% if user|has_group:"Requisitioner" %}
@@ -82,16 +78,25 @@
   {% endif %}
 {% endif %}
 
-    {% if user|has_group:"Procurement" %}
-      {% if not pr.pr_number %}
-        <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
-      {% endif %}
-      <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
-      <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
-    {% endif %}
+{% if user|has_group:"Procurement" %}
+  {% if not pr.pr_number %}
+    <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
+  {% endif %}
+  <button type="button" class="btn btn-outline-maroon" data-bs-toggle="modal" data-bs-target="#statusModal">
+    Update Status
+  </button>
+  <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
+  <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
 
-    <!-- ✅ Shared Print Button -->
-    <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+  {% if pr.notes %}
+    <p><strong>Last Update:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
+    <p><strong>Staff Note:</strong> {{ pr.notes }}</p>
+  {% endif %}
+{% endif %}
+
+<!-- ✅ Shared Print Button -->
+<button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+
   </div>
 </div>
 
@@ -107,5 +112,27 @@
   body { background: white; }
 }
 </style>
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'procurement:update_pr_status' pr.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title text-maroon">Update Purchase Request Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Staff Note</label>
+          <textarea name="note" rows="3" class="form-control" placeholder="e.g. PO sent, goods received"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

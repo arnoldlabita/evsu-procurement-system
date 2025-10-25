@@ -1,0 +1,22 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3 class="text-maroon">Update Status — {{ pr.pr_number }}</h3>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="note" class="form-label">Enter Staff Note:</label>
+      <textarea name="note" id="note" rows="3" class="form-control" placeholder="e.g. PO sent, goods received"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-maroon">Update Status</button>
+    <a href="{% url 'procurement:pr_detail' pr.pk %}" class="btn btn-outline-secondary">Cancel</a>
+  </form>
+
+  <div class="mt-3">
+    <p><strong>Current Status:</strong> {{ pr.get_status_display }}</p>
+    <p><strong>Last Updated:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
+  </div>
+</div>
+{% endblock %}

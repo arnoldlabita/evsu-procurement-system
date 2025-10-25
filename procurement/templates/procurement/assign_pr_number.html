@@ -16,6 +16,7 @@
     input,select,textarea{ width:100%; border:1px solid #ccc; border-radius:4px; padding:6px 8px; font-size:14px; }
     .btn-maroon{ background:var(--maroon); color:#fff; border:none; }
     .btn-outline-maroon{ color:var(--maroon); border:1px solid var(--maroon); }
+    .alert-error{ background:#ffecec; border:1px solid #ffb3b3; color:#b30000; border-radius:4px; padding:10px; margin-top:10px; }
     @media print{ .no-print{display:none!important;} body{background:white;} .pr-card{box-shadow:none;} }
   </style>
 </head>
@@ -27,38 +28,43 @@
     <h1>ASSIGN PR NUMBER & DATE</h1>
   </div>
 
-  <form method="post" action="{% url 'procurement:assign_pr_number' pr.id %}" enctype="multipart/form-data">
+  <form method="post" action="{% url 'procurement:assign_pr_number' pr.id %}" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
-    {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
 
-  {{ form.non_field_errors }}
-  {{ form.pr_number.errors }}
-  {{ form.pr_date.errors }}
+    <!-- ✅ Display messages (success/info/warning) -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- ✅ Display form-wide errors only ONCE -->
+    {% if form.non_field_errors %}
+      <div class="alert-error">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
 
     <h5 class="mt-3">Purchase Request Details</h5>
     <div class="row mt-2">
       <div class="col-md-6 mb-2">
         <label class="form-label">Requisitioner</label>
-        <input type="text" class="form-control" value="{{ pr.created_by.get_full_name }}" readonly>
+        <input type="text" class="form-control" value="{{ pr.requisitioner }}" readonly>
       </div>
       <div class="col-md-6 mb-2">
-        <label class="form-label">Office</label>
-        <input type="text" class="form-control" value="{{ pr.requesting_office }}" readonly>
+        <label class="form-label">Office / Section</label>
+        <input type="text" class="form-control" value="{{ pr.office_section }}" readonly>
       </div>
     </div>
 
     <div class="row mt-2">
       <div class="col-md-6 mb-2">
-        <label class="form-label">Fund Cluster</label>
-        <input type="text" class="form-control" value="{{ pr.fund_cluster }}" readonly>
+        <label class="form-label">Designation</label>
+        <input type="text" class="form-control" value="{{ pr.designation }}" readonly>
       </div>
       <div class="col-md-6 mb-2">
-        <label class="form-label">Responsibility Center Code</label>
-        <input type="text" class="form-control" value="{{ pr.responsibility_center_code }}" readonly>
+        <label class="form-label">Funding</label>
+        <input type="text" class="form-control" value="{{ pr.get_funding_display }}" readonly>
       </div>
     </div>
 
@@ -72,10 +78,16 @@
       <div class="col-md-6 mb-2">
         {{ form.pr_number.label_tag }}
         {{ form.pr_number }}
+        {% if form.pr_number.errors %}
+          <div class="alert-error">{{ form.pr_number.errors }}</div>
+        {% endif %}
       </div>
       <div class="col-md-6 mb-2">
         {{ form.pr_date.label_tag }}
         {{ form.pr_date }}
+        {% if form.pr_date.errors %}
+          <div class="alert-error">{{ form.pr_date.errors }}</div>
+        {% endif %}
       </div>
     </div>
 
@@ -103,13 +115,21 @@
         <td>{{ item.description }}</td>
         <td>{{ item.quantity }}</td>
         <td>{{ item.unit }}</td>
-        <td>{{ item.unit_cost }}</td>
+        <td>{{ item.unit_cost|floatformat:2 }}</td>
         <td>{{ item.total_cost|floatformat:2 }}</td>
       </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted">No items found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
+  {% if pr.attachments %}
+  <div class="mt-3">
+    <label class="form-label">Attachment:</label><br>
+    <a href="{{ pr.attachments.url }}" target="_blank">{{ pr.attachments.name }}</a>
+  </div>
+  {% endif %}
 </div>
 
 </body>

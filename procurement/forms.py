@@ -10,37 +10,59 @@ from .models import (
 # PURCHASE REQUEST FORMS
 # -------------------------
 
-# Requisitioner form: cannot set PR number or date
-class PurchaseRequestForm(forms.ModelForm):
+# Requisitioner form (for creating PR)
+class RequisitionerPRForm(forms.ModelForm):
+    FUNDING_CHOICES = [
+        ("IGF", "Internally Generated Fund (IGF)"),
+        ("RAF", "Regular Agency Fund (RAF)"),
+        ("TRF", "Trust Receipt Fund (TRF)"),
+        ("BRF", "Business Related Fund (BRF)"),
+    ]
+
+    funding = forms.ChoiceField(
+        choices=FUNDING_CHOICES,
+        widget=forms.Select(attrs={"class": "form-select"}),
+        required=False,
+    )
+
     class Meta:
         model = PurchaseRequest
         fields = [
-            'requesting_office',
-            'fund_cluster',
-            'responsibility_center_code',
-            'purpose'
+            "requisitioner",
+            "designation",
+            "office_section",
+            "purpose",
+            "funding",
+            "attachments",
         ]
         widgets = {
-            'purpose': forms.Textarea(attrs={'rows': 1}),
+            "requisitioner": forms.TextInput(attrs={"class": "form-control"}),
+            "designation": forms.TextInput(attrs={"class": "form-control"}),
+            "office_section": forms.TextInput(attrs={"class": "form-control"}),
+            "purpose": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "attachments": forms.ClearableFileInput(attrs={"class": "form-control"}),
         }
 
-# Procurement staff form: can assign PR number and date
-class ProcurementPRForm(forms.ModelForm):
+
+# Procurement staff form (for assigning PR number and updating metadata)
+class ProcurementStaffPRForm(forms.ModelForm):
     class Meta:
         model = PurchaseRequest
         fields = [
-            'pr_number',
-            'pr_date',
-            'requesting_office',
-            'fund_cluster',
-            'responsibility_center_code',
-            'purpose'
+            "pr_number",
+            "pr_date",
+            "status",
+            "purpose",
+            "attachments",
         ]
         widgets = {
-            'pr_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'purpose': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'pr_number': forms.TextInput(attrs={'class': 'form-control'}),
+            "pr_number": forms.TextInput(attrs={'class': 'form-control'}),
+            "pr_date": forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            "status": forms.Select(attrs={'class': 'form-select'}),
+            "purpose": forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            "attachments": forms.ClearableFileInput(attrs={"class": "form-control"}),
         }
+
 
 # -------------------------
 # PR ITEM FORM
@@ -70,15 +92,20 @@ class PRItemForm(forms.ModelForm):
             }),
         }
 
+
+# -------------------------
+# ASSIGN PR NUMBER FORM
+# -------------------------
 class AssignPRNumberForm(forms.ModelForm):
     class Meta:
         model = PurchaseRequest
         fields = ['pr_number', 'pr_date']
         widgets = {
-            'pr_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'pr_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'pr_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
-        
+
+
 # Inline formset for PR items
 PRItemFormSet = inlineformset_factory(
     PurchaseRequest,
@@ -88,6 +115,7 @@ PRItemFormSet = inlineformset_factory(
     can_delete=True
 )
 
+
 # -------------------------
 # SUPPLIER FORM
 # -------------------------
@@ -95,6 +123,15 @@ class SupplierForm(forms.ModelForm):
     class Meta:
         model = Supplier
         fields = ["name", "address", "contact_person", "contact_no", "tin", "accredited"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "address": forms.TextInput(attrs={"class": "form-control"}),
+            "contact_person": forms.TextInput(attrs={"class": "form-control"}),
+            "contact_no": forms.TextInput(attrs={"class": "form-control"}),
+            "tin": forms.TextInput(attrs={"class": "form-control"}),
+            "accredited": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
 
 # -------------------------
 # REQUEST FOR QUOTATION (RFQ) FORM
@@ -104,8 +141,9 @@ class RFQForm(forms.ModelForm):
         model = RequestForQuotation
         fields = ["date"]
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+
 
 # -------------------------
 # AGENCY PROCUREMENT REQUEST (APR) FORM
@@ -114,6 +152,10 @@ class APRForm(forms.ModelForm):
     class Meta:
         model = AgencyProcurementRequest
         fields = ["requesting_agency"]
+        widgets = {
+            "requesting_agency": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
 
 # -------------------------
 # ABSTRACT OF QUOTATION (AOQ) FORMS
@@ -123,10 +165,18 @@ class AOQForm(forms.ModelForm):
         model = AbstractOfQuotation
         fields = []
 
+
 class AOQLineForm(forms.ModelForm):
     class Meta:
         model = AOQLine
         fields = ["pr_item", "supplier", "unit_price", "responsive"]
+        widgets = {
+            "pr_item": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "supplier": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "unit_price": forms.NumberInput(attrs={"class": "form-control form-control-sm"}),
+            "responsive": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
 
 AOQLineFormSet = inlineformset_factory(
     AbstractOfQuotation,
@@ -135,6 +185,7 @@ AOQLineFormSet = inlineformset_factory(
     extra=1,
     can_delete=True
 )
+
 
 # -------------------------
 # PURCHASE ORDER FORM
@@ -147,9 +198,12 @@ class PurchaseOrderForm(forms.ModelForm):
             "place_of_delivery",
             "date_of_delivery",
             "submission_date",
-            "receiving_office"
+            "receiving_office",
         ]
         widgets = {
-            "date_of_delivery": forms.DateInput(attrs={'type': 'date'}),
-            "submission_date": forms.DateInput(attrs={'type': 'date'}),
+            "supplier": forms.Select(attrs={'class': 'form-select'}),
+            "place_of_delivery": forms.TextInput(attrs={'class': 'form-control'}),
+            "date_of_delivery": forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            "submission_date": forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            "receiving_office": forms.TextInput(attrs={'class': 'form-control'}),
         }

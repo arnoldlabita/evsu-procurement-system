@@ -6,7 +6,7 @@
 
   <div class="row mt-4">
     <!-- Pending PRs -->
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <h5 class="text-maroon">Pending PRs</h5>
@@ -17,7 +17,7 @@
     </div>
 
     <!-- RFQs -->
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <h5 class="text-maroon">RFQs in Process</h5>
@@ -27,16 +27,33 @@
       </div>
     </div>
 
-    <!-- AOQs / POs -->
-    <div class="col-md-4">
+    <!-- AOQs -->
+    <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
-          <h5 class="text-maroon">AOQs / POs</h5>
-          <h3>{{ aoq_count }}/{{ po_count }}</h3>
+          <h5 class="text-maroon">Abstracts of Quotation (AOQ)</h5>
+          <h3>{{ aoq_count }}</h3>
           <a href="{% url 'procurement:aoq_list' %}" class="btn btn-outline-maroon">View AOQs</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- POs -->
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="text-maroon">Purchase Orders (PO)</h5>
+          <h3>{{ po_count }}</h3>
+          <a href="{% url 'procurement:po_list' %}" class="btn btn-outline-maroon">View POs</a>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+.text-maroon { color: #800000; }
+.btn-outline-maroon { border: 1px solid #800000; color: #800000; }
+.btn-outline-maroon:hover { background-color: #800000; color: white; }
+</style>
 {% endblock %}

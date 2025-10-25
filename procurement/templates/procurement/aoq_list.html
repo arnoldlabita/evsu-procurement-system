@@ -1,0 +1,85 @@
+{% extends "procurement/base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="container mt-4">
+  <h2 class="text-maroon fw-bold">Abstracts of Quotation (AOQ)</h2>
+  <p class="text-muted">List of all processed and pending AOQs</p>
+
+  <div class="table-responsive mt-3">
+    <table class="table table-bordered align-middle shadow-sm">
+      <thead class="table-maroon text-white">
+        <tr>
+          <th>AOQ Number</th>
+          <th>RFQ Number</th>
+          <th>Purchase Request</th>
+          <th>Date Created</th>
+          <th>Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for aoq in aoqs %}
+        <tr>
+          <td>{{ aoq.aoq_number|default:"(Pending Assignment)" }}</td>
+          <td>
+            {% if aoq.rfq %}
+              <a href="{% url 'procurement:rfq_preview' aoq.rfq.pk %}" class="text-maroon fw-semibold">
+                {{ aoq.rfq.rfq_number|default:"(RFQ Pending)" }}
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if aoq.rfq and aoq.rfq.purchase_request %}
+              <a href="{% url 'procurement:pr_detail' aoq.rfq.purchase_request.pk %}" class="text-decoration-none text-dark">
+                {{ aoq.rfq.purchase_request.pr_number|default:"(PR Pending)" }}
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ aoq.created_at|date:"M d, Y H:i" }}</td>
+          <td>
+            {% if aoq.verified %}
+              <span class="badge bg-success">Verified</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="{% url 'procurement:aoq_detail' aoq.pk %}" class="btn btn-sm btn-outline-maroon">
+              View
+            </a>
+            <a href="{% url 'procurement:aoq_generate_po' aoq.pk %}" class="btn btn-sm btn-outline-success">
+              Generate PO
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-3">
+            No AOQs available yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.text-maroon { color: #800000; }
+.table-maroon { background-color: #800000; }
+.btn-outline-maroon {
+  border: 1px solid #800000;
+  color: #800000;
+}
+.btn-outline-maroon:hover {
+  background-color: #800000;
+  color: white;
+}
+</style>
+
+{% endblock %}

@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from decimal import Decimal
 from django.views import generic, View
 from django.contrib import messages
 from django.urls import reverse_lazy
@@ -7,7 +8,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
 from django.views.generic import DetailView
-from django.views.generic import UpdateView
+
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
@@ -15,9 +16,10 @@ from .models import (
     AbstractOfQuotation, AOQLine, PurchaseOrder
 )
 from .forms import (
-    PurchaseRequestForm, PRItemFormSet, SupplierForm,
+    RequisitionerPRForm, ProcurementStaffPRForm,
+    PRItemFormSet, SupplierForm,
     RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm,
-    ProcurementPRForm, AssignPRNumberForm
+    AssignPRNumberForm
 )
 
 
@@ -81,11 +83,11 @@ class PRListView(LoginRequiredMixin, generic.ListView):
 # -----------------------
 class PRCreateView(LoginRequiredMixin, generic.CreateView):
     model = PurchaseRequest
-    form_class = PurchaseRequestForm
+    form_class = RequisitionerPRForm
     template_name = "procurement/pr_form.html"
 
     def get(self, request):
-        form = PurchaseRequestForm()
+        form = self.form_class()  # ✅ instantiate
         formset = PRItemFormSet(prefix="form")
         return render(request, self.template_name, {
             "form": form,
@@ -94,10 +96,10 @@ class PRCreateView(LoginRequiredMixin, generic.CreateView):
         })
 
     def post(self, request):
-        form = PurchaseRequestForm(request.POST)
+        form = self.form_class(request.POST, request.FILES)  # ✅ instantiate properly
         formset = PRItemFormSet(request.POST, prefix="form")
 
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid() and formset.is_valid():  # ✅ works now
             pr = form.save(commit=False)
             pr.created_by = request.user
             pr.save()
@@ -114,6 +116,7 @@ class PRCreateView(LoginRequiredMixin, generic.CreateView):
             "formset": formset,
             "is_procurement": False,
         })
+
 
 def pr_detail(request, pk):
     pr = get_object_or_404(PurchaseRequest, pk=pk)
@@ -146,7 +149,7 @@ class PRWorkflowView(LoginRequiredMixin, View):
 
     def get(self, request, pk):
         pr = self.get_object(pk)
-        form = ProcurementPRForm(instance=pr)
+        form = ProcurementStaffPRForm
         formset = PRItemFormSet(instance=pr, prefix="form")
         is_procurement = request.user.groups.filter(name="Procurement").exists()
         return render(request, self.template_name, {
@@ -158,7 +161,7 @@ class PRWorkflowView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         pr = self.get_object(pk)
-        form = ProcurementPRForm(request.POST, instance=pr)
+        form = ProcurementStaffPRForm(request.POST, instance=pr)
         formset = PRItemFormSet(request.POST, instance=pr, prefix="form")
 
         if form.is_valid() and formset.is_valid():
@@ -275,7 +278,8 @@ class AOQListView(LoginRequiredMixin, generic.ListView):
     model = AbstractOfQuotation
     template_name = "procurement/aoq_list.html"
     context_object_name = "aoqs"
-    ordering = ["-id"]
+    ordering = ["-created_at"]
+
 
 def find_lcrb_for_item(aoq, pr_item):
     lines = aoq.lines.filter(pr_item=pr_item, responsive=True).order_by("unit_price")
@@ -314,6 +318,12 @@ class PODetailView(LoginRequiredMixin, generic.DetailView):
     template_name = "procurement/po_detail.html"
     context_object_name = "po"
 
+class POListView(LoginRequiredMixin, generic.ListView):
+    model = PurchaseOrder
+    template_name = "procurement/po_list.html"
+    context_object_name = "pos"
+    ordering = ["-created_at"]
+
 # -----------------------
 # LOGIN VIEW
 # -----------------------
@@ -349,7 +359,7 @@ class PRDetailView(LoginRequiredMixin, generic.DetailView):
         pr = self.object
         # Compute grand total here
         grand_total = sum(
-            (item.quantity * item.estimated_unit_cost)
+            (item.quantity * item.unit_cost)
             for item in pr.items.all()
         )
         context["grand_total"] = grand_total
@@ -359,7 +369,7 @@ class PRDetailView(LoginRequiredMixin, generic.DetailView):
 
 class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = PurchaseRequest
-    form_class = PurchaseRequestForm
+    form_class = RequisitionerPRForm
     template_name = "procurement/pr_form.html"
 
     def get(self, request, *args, **kwargs):
@@ -375,15 +385,27 @@ class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
 
     def post(self, request, *args, **kwargs):
         pr = self.get_object()
+
+        # ✅ FIXED: include request.FILES
         form = self.form_class(request.POST, request.FILES, instance=pr)
-        formset = PRItemFormSet(request.POST, instance=pr, prefix="form")
+        formset = PRItemFormSet(request.POST, request.FILES, instance=pr, prefix="form")
+
+        print("---- FORM ERRORS ----")
+        print(form.errors)
+        print("---- FORMSET ERRORS ----")
+        print(formset.errors)
 
         if form.is_valid() and formset.is_valid():
-            form.save()
+            pr = form.save(commit=False)
+            pr.last_update = timezone.now()
+            pr.save()
+            formset.instance = pr
             formset.save()
+
             messages.success(request, f"Purchase Request {pr.pr_number or pr.id} updated successfully.")
             return redirect("procurement:pr_detail", pk=pr.pk)
 
+        # If validation fails
         messages.error(request, "Please correct the errors below.")
         return render(request, self.template_name, {
             "form": form,
@@ -391,6 +413,7 @@ class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
             "edit_mode": True,
             "pr": pr
         })
+
 
 @login_required
 def submit_pr_for_verification(request, pk):
@@ -411,3 +434,45 @@ def submit_pr_for_verification(request, pk):
     pr.save()
     messages.success(request, f"Purchase Request {pr.pr_number or pr.id} has been submitted for verification.")
     return redirect("procurement:pr_detail", pk=pk)
+
+from django.http import JsonResponse
+
+@login_required
+def update_pr_status(request, pk):
+    """Procurement staff updates PR status by entering a note."""
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+
+    if request.method == "POST":
+        note = request.POST.get("note", "").strip()
+
+        if not note:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"error": "Note required"}, status=400)
+            messages.warning(request, "Please enter a note before submitting.")
+            return redirect("procurement:pr_detail", pk=pk)
+
+        # Save note + update status automatically
+        pr.notes = note
+        pr.update_status_from_notes()
+        pr.last_update = timezone.now()
+        pr.save()
+
+        # ✅ AJAX response
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "status": pr.get_status_display(),
+                "badge_class": (
+                    "success" if pr.status == "verified" else
+                    "primary" if pr.status == "submitted" else
+                    "secondary" if pr.status == "closed" else
+                    "warning text-dark"
+                ),
+                "last_update": pr.last_update.strftime("%b %d, %Y %H:%M"),
+            })
+
+        # Fallback for normal form POST
+        messages.success(request, f"Status updated to {pr.get_status_display()}.")
+        return redirect("procurement:pr_detail", pk=pr.pk)
+
+    # GET → render modal version directly if ever visited by URL
+    return render(request, "procurement/update_pr_status.html", {"pr": pr})

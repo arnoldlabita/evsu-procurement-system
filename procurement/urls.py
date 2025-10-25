@@ -40,7 +40,8 @@ urlpatterns = [
     path("prs/<int:pk>/workflow/", PRWorkflowView.as_view(), name="pr_workflow"),
     path('prs/<int:pk>/assign/', views.assign_pr_number, name='assign_pr_number'),
     path("prs/<int:pk>/edit/", views.PRUpdateView.as_view(), name="pr_edit"),
-    
+    path("pr/<int:pk>/update-status/", views.update_pr_status, name="update_pr_status"),
+
     # ----------------------------
     # Requests for Quotation (RFQ)
     # ----------------------------
@@ -60,11 +61,13 @@ urlpatterns = [
     path("rfqs/<int:rfq_id>/create_aoq/", create_aoq, name="create_aoq"),
     path("aoqs/<int:pk>/", AOQDetailView.as_view(), name="aoq_detail"),
     path("aoqs/<int:pk>/generate_po/", generate_po_from_aoq, name="aoq_generate_po"),
-
+    path("aoqs/", views.AOQListView.as_view(), name="aoq_list"),
+    
     # ----------------------------
     # Purchase Orders (PO)
     # ----------------------------
     path("pos/<int:pk>/", PODetailView.as_view(), name="po_detail"),
+    path("pos/", views.POListView.as_view(), name="po_list"),
 
     # ----------------------------
     # Supplier Management

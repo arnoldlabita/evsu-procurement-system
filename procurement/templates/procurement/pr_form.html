@@ -7,7 +7,6 @@
 <style>
   :root {
     --maroon: #800000;
-    --muted: #6c757d;
     --bg: #f4f5f7;
   }
 
@@ -34,31 +33,10 @@
     margin-bottom: 20px;
   }
 
-  .pr-header img {
-    width: 90px;
-    height: auto;
-  }
+  .pr-header img { width: 90px; }
+  .pr-header h1 { color: var(--maroon); font-size: 26px; font-weight: 700; margin: 0; }
 
-  .pr-header h1 {
-    color: var(--maroon);
-    font-size: 26px;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  h2.text-maroon {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--maroon);
-  }
-
-  table.items {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
-    table-layout: fixed;
-  }
-
+  table.items { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: fixed; }
   table.items th, table.items td {
     border: 1px solid #e5e5e5;
     padding: 8px;
@@ -69,74 +47,19 @@
   table.items th {
     background: var(--maroon);
     color: #fff;
-    font-size: 14px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-  }
-
-  table.items td input,
-  table.items td select,
-  table.items td textarea {
-    width: 100%;
-    box-sizing: border-box;
     font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 5px 6px;
   }
 
-  .line-total {
-    font-weight: 600;
-    text-align: right;
-  }
+  .btn-maroon { background: var(--maroon); color: white; border: none; }
+  .btn-maroon:hover { background: #a30000; }
+  .btn-outline-maroon { color: var(--maroon); border: 1px solid var(--maroon); background: transparent; }
+  .btn-outline-maroon:hover { background: var(--maroon); color: white; }
 
-  tfoot td {
-    background: #fafafa;
-    font-weight: bold;
-  }
+  .delete-checkbox { display: none !important; }
+  .deleted-row { opacity: 0.4; text-decoration: line-through; }
 
-  .btn-maroon {
-    background: var(--maroon);
-    color: white;
-    border: none;
-    transition: background 0.2s ease-in-out;
-  }
-
-  .btn-maroon:hover {
-    background: #a30000;
-  }
-
-  .btn-outline-maroon {
-    color: var(--maroon);
-    border: 1px solid var(--maroon);
-    background: transparent;
-  }
-
-  .btn-outline-maroon:hover {
-    background: var(--maroon);
-    color: white;
-  }
-
-  .form-label {
-    font-weight: 600;
-  }
-
-  .no-print .btn {
-    margin-right: 6px;
-  }
-
-  @media print {
-    .no-print, .navbar {
-      display: none !important;
-    }
-    body {
-      background: white;
-    }
-    .pr-card {
-      box-shadow: none;
-      border: none;
-    }
-  }
+  @media print { .no-print, .navbar { display: none !important; } }
 </style>
 
 <div class="pr-card">
@@ -154,28 +77,17 @@
       {% else %}New Purchase Request{% endif %}
     </h2>
 
-    <!-- PR Details -->
+    <!-- Requisitioner Info -->
     <div class="row mt-3 g-3">
-      <div class="col-md-6">
-        {{ form.requesting_office.label_tag }} {{ form.requesting_office }}
-      </div>
-      {% if is_procurement %}
-      <div class="col-md-3">
-        {{ form.pr_number.label_tag }} {{ form.pr_number }}
-      </div>
-      <div class="col-md-3">
-        {{ form.date.label_tag }} {{ form.date }}
-      </div>
-      {% endif %}
-      <div class="col-md-6">
-        {{ form.fund_cluster.label_tag }} {{ form.fund_cluster }}
-      </div>
-      <div class="col-md-6">
-        {{ form.responsibility_center_code.label_tag }} {{ form.responsibility_center_code }}
-      </div>
+      <div class="col-md-6">{{ form.requisitioner.label_tag }}{{ form.requisitioner }}</div>
+      <div class="col-md-6">{{ form.designation.label_tag }}{{ form.designation }}</div>
+      <div class="col-md-6">{{ form.office_section.label_tag }}{{ form.office_section }}</div>
+      <div class="col-md-6">{{ form.funding.label_tag }}{{ form.funding }}</div>
     </div>
 
-    <!-- PR Items Table -->
+    <div class="mt-4">{{ form.purpose.label_tag }}{{ form.purpose }}</div>
+
+    <!-- ✅ PR Items -->
     <h5 class="mt-4 fw-bold text-maroon">Items</h5>
     {{ formset.management_form }}
     <div class="table-responsive">
@@ -194,6 +106,7 @@
         <tbody id="formset-body">
           {% for subform in formset %}
           <tr class="item-row">
+            {{ subform.id }}
             <td>{{ subform.stock_no }}</td>
             <td>{{ subform.description }}</td>
             <td>{{ subform.quantity }}</td>
@@ -201,7 +114,8 @@
             <td>{{ subform.unit_cost }}</td>
             <td class="line-total text-end">0.00</td>
             <td class="no-print text-center">
-              <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+              <input type="checkbox" name="{{ subform.prefix }}-DELETE" class="delete-checkbox" id="id_{{ subform.prefix }}-DELETE">
+              <button type="button" class="btn btn-sm btn-outline-maroon delete-btn" data-target="id_{{ subform.prefix }}-DELETE">🗑 Delete</button>
             </td>
           </tr>
           {% endfor %}
@@ -216,16 +130,12 @@
       </table>
     </div>
 
-    <div class="no-print mt-3 d-flex flex-wrap justify-content-between align-items-center">
+    <div class="no-print mt-3 d-flex justify-content-between">
       <div>
         <button type="button" id="add-row" class="btn btn-outline-maroon btn-sm">+ Add Item</button>
         <button type="button" id="print-btn" class="btn btn-maroon btn-sm">🖨 Print</button>
       </div>
       <button type="submit" class="btn btn-maroon btn-sm">💾 Save Purchase Request</button>
-    </div>
-
-    <div class="mt-4">
-      {{ form.purpose.label_tag }} {{ form.purpose }}
     </div>
   </form>
 </div>
@@ -233,42 +143,58 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const body = document.getElementById("formset-body");
-  const addBtn = document.getElementById("add-row");
   const totalForms = document.getElementById("id_form-TOTAL_FORMS");
-  const printBtn = document.getElementById("print-btn");
-
+  const addBtn = document.getElementById("add-row");
   const parseNum = v => parseFloat(String(v).replace(/,/g,"")) || 0;
 
   function lineTotal(row) {
     const q = parseNum(row.querySelector('[name$="quantity"]')?.value);
-    const c = parseNum(row.querySelector('[name$="unit_cost"],[name$="estimated_unit_cost"]')?.value);
+    const c = parseNum(row.querySelector('[name$="unit_cost"]')?.value);
     const t = q * c;
-    row.querySelector(".line-total").textContent = t.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+    row.querySelector(".line-total").textContent = t.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
     return t;
   }
 
   function grandTotal() {
     let t = 0;
-    body.querySelectorAll(".line-total").forEach(td => t += parseNum(td.textContent));
+    body.querySelectorAll(".line-total").forEach(td => {
+      if (!td.closest("tr").classList.contains("deleted-row")) {
+        t += parseNum(td.textContent);
+      }
+    });
     document.getElementById("grand-total").textContent = t.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
   }
 
+  // ✅ Toggle Delete/Undo
+  body.addEventListener("click", e => {
+    const btn = e.target.closest(".delete-btn");
+    if (!btn) return;
+    const id = btn.dataset.target;
+    const checkbox = document.getElementById(id);
+    const row = btn.closest("tr.item-row");
+
+    if (checkbox.checked) {
+      checkbox.checked = false;
+      row.classList.remove("deleted-row");
+      btn.textContent = "🗑 Delete";
+    } else {
+      checkbox.checked = true;
+      row.classList.add("deleted-row");
+      btn.textContent = "↩ Undo";
+    }
+    grandTotal();
+  });
+
+  // ✅ Add new item
   addBtn.addEventListener("click", () => {
     const i = parseInt(totalForms.value);
-    const tpl = `{{ formset.empty_form.as_p|escapejs }}`.replace(/__prefix__/g, i);
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = tpl;
-
-    tempDiv.querySelectorAll("input, select, textarea").forEach(inp => {
-      inp.removeAttribute("hidden");
-      inp.type = inp.type === "hidden" ? "text" : inp.type;
-      inp.classList.add("form-control", "form-control-sm");
-    });
-
-    const inputMap = {};
-    tempDiv.querySelectorAll("input, select, textarea").forEach(el => {
+    const template = `{{ formset.empty_form.as_p|escapejs }}`.replace(/__prefix__/g, i);
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = template;
+    const fields = {};
+    wrapper.querySelectorAll("input, select, textarea").forEach(el => {
       const match = el.name.match(/-(\w+)$/);
-      if (match) inputMap[match[1]] = el;
+      if (match) fields[match[1]] = el;
     });
 
     const tr = document.createElement("tr");
@@ -281,36 +207,26 @@ document.addEventListener("DOMContentLoaded", () => {
       <td class="cell-cost"></td>
       <td class="line-total text-end">0.00</td>
       <td class="no-print text-center">
-        <button type="button" class="btn btn-sm btn-outline-maroon remove-row">×</button>
+        <input type="checkbox" name="form-${i}-DELETE" class="delete-checkbox" id="id_form-${i}-DELETE">
+        <button type="button" class="btn btn-sm btn-outline-maroon delete-btn" data-target="id_form-${i}-DELETE">🗑 Delete</button>
       </td>
     `;
 
-    if (inputMap.stock_no) tr.querySelector(".cell-stock").appendChild(inputMap.stock_no);
-    if (inputMap.description) tr.querySelector(".cell-desc").appendChild(inputMap.description);
-    if (inputMap.quantity) tr.querySelector(".cell-qty").appendChild(inputMap.quantity);
-    if (inputMap.unit) tr.querySelector(".cell-unit").appendChild(inputMap.unit);
-    const costField = inputMap.estimated_unit_cost || inputMap.unit_cost;
-    if (costField) tr.querySelector(".cell-cost").appendChild(costField);
+    if (fields.stock_no) tr.querySelector(".cell-stock").appendChild(fields.stock_no);
+    if (fields.description) tr.querySelector(".cell-desc").appendChild(fields.description);
+    if (fields.quantity) tr.querySelector(".cell-qty").appendChild(fields.quantity);
+    if (fields.unit) tr.querySelector(".cell-unit").appendChild(fields.unit);
+    if (fields.unit_cost) tr.querySelector(".cell-cost").appendChild(fields.unit_cost);
 
     body.appendChild(tr);
     totalForms.value = i + 1;
-    lineTotal(tr);
-    grandTotal();
-    tr.querySelector("input, select, textarea")?.focus();
-  });
-
-  body.addEventListener("click", e => {
-    const btn = e.target.closest(".remove-row");
-    if (!btn) return;
-    btn.closest("tr.item-row").remove();
-    totalForms.value = body.querySelectorAll("tr.item-row").length;
     grandTotal();
   });
 
+  // Auto-update totals
   body.addEventListener("input", e => {
-    const el = e.target;
-    if (el.name.endsWith("quantity") || el.name.endsWith("unit_cost") || el.name.endsWith("estimated_unit_cost")) {
-      const row = el.closest("tr.item-row");
+    if (["quantity","unit_cost"].some(f => e.target.name.endsWith(f))) {
+      const row = e.target.closest("tr.item-row");
       lineTotal(row);
       grandTotal();
     }
@@ -318,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   body.querySelectorAll("tr.item-row").forEach(lineTotal);
   grandTotal();
-  printBtn?.addEventListener("click", () => window.print());
+  
 });
 </script>
 

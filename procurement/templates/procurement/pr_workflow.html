@@ -38,12 +38,8 @@
     <h5 class="mt-3">PR Details</h5>
     <div class="row mt-2">
       <div class="col-md-6 mb-2">
-        {{ form.requesting_office.label_tag }}
-        {% if not is_procurement %}
-          {{ form.requesting_office }}
-        {% else %}
-          <input type="text" class="form-control" value="{{ form.requesting_office.value }}" readonly>
-        {% endif %}
+<label class="form-label">Requesting Office</label>
+<input type="text" class="form-control" value="{{ pr.office_section }}" readonly>
       </div>
       <div class="col-md-6 mb-2">
         {{ form.purpose.label_tag }}
@@ -63,7 +59,7 @@
         {{ form.pr_number.label_tag }} {{ form.pr_number }}
       </div>
       <div class="col-md-6 mb-2">
-        {{ form.date.label_tag }} {{ form.date }}
+        {{ form.pr_date.label_tag }} {{ form.pr_date }}
       </div>
     </div>
     {% endif %}
@@ -187,14 +183,26 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  formsetBody.addEventListener("click", e => {
-    if (e.target.classList.contains("remove-row")) {
-      e.target.closest("tr").remove();
+formsetBody.addEventListener("click", e => {
+  if (e.target.classList.contains("remove-row")) {
+    const row = e.target.closest("tr.item-row");
+    const deleteField = row.querySelector('input[name$="DELETE"]');
+    const idField = row.querySelector('input[name$="id"]');
+
+    if (deleteField && idField && idField.value) {
+      // ✅ Mark existing item for deletion (hide row but keep it in form)
+      deleteField.checked = true;
+      row.style.display = "none";
+    } else {
+      // ✅ Remove newly added (unsaved) row
+      row.remove();
       totalForms.value = document.querySelectorAll("tr.item-row").length;
-      renumber();
-      updateGrandTotal();
     }
-  });
+
+    updateGrandTotal();
+  }
+});
+
 
   formsetBody.addEventListener("input", e => {
     if (e.target.name.endsWith("quantity") || e.target.name.endsWith("unit_cost")) {

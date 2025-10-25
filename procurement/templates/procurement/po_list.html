@@ -1,0 +1,74 @@
+{% extends "procurement/base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="container mt-4">
+  <h2 class="text-maroon fw-bold">Purchase Orders</h2>
+  <p class="text-muted">List of all generated purchase orders</p>
+
+  <div class="table-responsive mt-3">
+    <table class="table table-bordered align-middle shadow-sm">
+      <thead class="table-maroon text-white">
+        <tr>
+          <th>PO Number</th>
+          <th>Supplier</th>
+          <th>AOQ Reference</th>
+          <th>Receiving Office</th>
+          <th>Date of Delivery</th>
+          <th>Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for po in pos %}
+        <tr>
+          <td>{{ po.po_number|default:"(Pending Assignment)" }}</td>
+          <td>{{ po.supplier.name }}</td>
+          <td>
+            {% if po.aoq %}
+              <a href="{% url 'procurement:aoq_detail' po.aoq.pk %}" class="text-maroon fw-semibold">
+                {{ po.aoq.aoq_number|default:"(AOQ Pending)" }}
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ po.receiving_office|default:"N/A" }}</td>
+          <td>{{ po.date_of_delivery|date:"M d, Y"|default:"—" }}</td>
+          <td>
+            {% if po.date_of_delivery %}
+              <span class="badge bg-success">Delivered</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="{% url 'procurement:po_detail' po.pk %}" class="btn btn-sm btn-outline-maroon">
+              View
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-3">No purchase orders available yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.text-maroon { color: #800000; }
+.table-maroon { background-color: #800000; }
+.btn-outline-maroon {
+  border: 1px solid #800000;
+  color: #800000;
+}
+.btn-outline-maroon:hover {
+  background-color: #800000;
+  color: white;
+}
+</style>
+
+{% endblock %}

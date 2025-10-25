@@ -24,7 +24,7 @@ class Supplier(TimestampedModel):
     def __str__(self):
         return self.name
 
-class PurchaseRequest(TimestampedModel):
+class PurchaseRequest(models.Model):
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("submitted", "Submitted"),
@@ -32,14 +32,59 @@ class PurchaseRequest(TimestampedModel):
         ("closed", "Closed"),
     ]
 
-    pr_number = models.CharField(max_length=50, blank=True, unique=True, null=True)
-    pr_date = models.DateField(default=timezone.now)
-    requesting_office = models.CharField(max_length=255)
-    fund_cluster = models.CharField(max_length=100, blank=True, null=True)  # ✅ new
-    responsibility_center_code = models.CharField(max_length=100, blank=True, null=True)  # ✅ new
-    purpose = models.TextField(blank=True)
+    FUNDING_CHOICES = [
+        ("IGF", "Internally Generated Fund (IGF)"),
+        ("RAF", "Regular Agency Fund (RAF)"),
+        ("TRF", "Trust Receipt Fund (TRF)"),
+        ("BRF", "Business Related Fund (BRF)"),
+    ]
+
+    # --- Requestor Info ---
+    requisitioner = models.CharField(max_length=255, blank=True, null=True)
+    designation = models.CharField(max_length=255, blank=True, null=True)
+    office_section = models.CharField(max_length=255, blank=True, null=True)
+    purpose = models.TextField(blank=True, null=True)
+    funding = models.CharField(
+        max_length=50,
+        choices=FUNDING_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Select the fund source"
+    )
+    attachments = models.FileField(upload_to="pr_attachments/", blank=True, null=True)
+
+    # --- PR Metadata ---
+    pr_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    pr_date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
-    attachments = models.FileField(upload_to="pr_attachments/", null=True, blank=True)
+
+    # --- System Info ---
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="purchase_requests")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_update = models.DateTimeField(default=timezone.now)
+
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"PR-{self.pr_number or self.id}"
+
+    # ✅ FIXED: properly indented method inside the class
+    def update_status_from_notes(self):
+        """
+        Automatically updates the status based on staff notes.
+        """
+        note = (self.notes or "").lower()
+
+        if "po sent" in note:
+            self.status = "pending_supplier"
+        elif "goods received" in note or "completed" in note:
+            self.status = "completed"
+        elif "verified" in note:
+            self.status = "verified"
+        else:
+            # Keep current status if note doesn’t match anything
+            self.status = self.status or "draft"
 
     def assign_pr_number(self):
         if not self.pr_number:
@@ -48,7 +93,7 @@ class PurchaseRequest(TimestampedModel):
 
     def __str__(self):
         return self.pr_number or f"PR (draft) {self.id}"
-    
+
     def total_amount(self):
         return sum(item.total_cost() for item in self.items.all())
 
