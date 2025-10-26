@@ -36,7 +36,14 @@
   .pr-header img { width: 90px; }
   .pr-header h1 { color: var(--maroon); font-size: 26px; font-weight: 700; margin: 0; }
 
-  table.items { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: fixed; }
+  /* 🧩 Table Layout Improvements */
+  table.items { 
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    table-layout: fixed;
+  }
+
   table.items th, table.items td {
     border: 1px solid #e5e5e5;
     padding: 8px;
@@ -51,6 +58,34 @@
     font-size: 14px;
   }
 
+  /* ✅ Adjusted Column Widths */
+  table.items th:nth-child(1), table.items td:nth-child(1) { width: 8%; }  /* Stock No */
+  table.items th:nth-child(2), table.items td:nth-child(2) { width: 30%; }  /* Description */
+  table.items th:nth-child(3), table.items td:nth-child(3) { width: 9%; }   /* Qty */
+  table.items th:nth-child(4), table.items td:nth-child(4) { width: 10.5%; }  /* Unit */
+  table.items th:nth-child(5), table.items td:nth-child(5) { width: 12%; }  /* Unit Cost */
+  table.items th:nth-child(6), table.items td:nth-child(6) { width: 10%; }  /* Total */
+  table.items th:nth-child(7), table.items td:nth-child(7) { width: 8%; }   /* Action */
+
+  /* ✅ Description Field Styling */
+  textarea[name$="description"] {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 6px;
+    font-family: 'Segoe UI', sans-serif;
+    line-height: 1.4;
+  }
+
+  textarea[name$="description"]:focus {
+    border-color: var(--maroon);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(128, 0, 0, 0.1);
+  }
+
   .btn-maroon { background: var(--maroon); color: white; border: none; }
   .btn-maroon:hover { background: #a30000; }
   .btn-outline-maroon { color: var(--maroon); border: 1px solid var(--maroon); background: transparent; }
@@ -59,13 +94,40 @@
   .delete-checkbox { display: none !important; }
   .deleted-row { opacity: 0.4; text-decoration: line-through; }
 
+  /* Validation feedback */
+  .form-warning {
+    background: #ffeaea;
+    color: #a30000;
+    padding: 10px;
+    border-left: 4px solid #a30000;
+    border-radius: 4px;
+    display: none;
+    margin-top: 10px;
+  }
+
+  .field-error {
+    border-color: #a30000 !important;
+    background-color: #fff3f3;
+  }
+
   @media print { .no-print, .navbar { display: none !important; } }
+
+  @media (max-width: 768px) {
+    table.items th, table.items td { font-size: 13px; padding: 6px; }
+    textarea[name$="description"] { min-height: 50px; font-size: 13px; }
+  }
 </style>
+
 
 <div class="pr-card">
   <div class="pr-header">
     <img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo">
     <h1>PURCHASE REQUEST</h1>
+  </div>
+
+  <!-- 🧩 Warning alert (added) -->
+  <div id="form-warning" class="form-warning">
+    ⚠ Please complete all required fields before saving your purchase request.
   </div>
 
   <form method="post" enctype="multipart/form-data" id="prForm">
@@ -82,7 +144,18 @@
       <div class="col-md-6">{{ form.requisitioner.label_tag }}{{ form.requisitioner }}</div>
       <div class="col-md-6">{{ form.designation.label_tag }}{{ form.designation }}</div>
       <div class="col-md-6">{{ form.office_section.label_tag }}{{ form.office_section }}</div>
-      <div class="col-md-6">{{ form.funding.label_tag }}{{ form.funding }}</div>
+
+      <!-- 🧩 Modified Funding Field -->
+      <div class="col-md-6">
+        {{ form.funding.label_tag }}
+        <select name="funding" id="id_funding" class="form-select" required>
+          <option value="" disabled selected>— Select Funding Source —</option>
+          <option value="Internally Generated Fund (IGF)">Internally Generated Fund (IGF)</option>
+          <option value="Regular Agency Fund (RAF)">Regular Agency Fund (RAF)</option>
+          <option value="Trust Receipt Fund (TRF)">Trust Receipt Fund (TRF)</option>
+          <option value="Business Related Fund (BRF)">Business Related Fund (BRF)</option>
+        </select>
+      </div>
     </div>
 
     <div class="mt-4">{{ form.purpose.label_tag }}{{ form.purpose }}</div>
@@ -133,7 +206,6 @@
     <div class="no-print mt-3 d-flex justify-content-between">
       <div>
         <button type="button" id="add-row" class="btn btn-outline-maroon btn-sm">+ Add Item</button>
-      
       </div>
       <button type="submit" class="btn btn-maroon btn-sm">💾 Save Purchase Request</button>
     </div>
@@ -234,7 +306,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
   body.querySelectorAll("tr.item-row").forEach(lineTotal);
   grandTotal();
-  
+
+  /* 🧩 Added form validation logic */
+  const form = document.getElementById("prForm");
+  const warning = document.getElementById("form-warning");
+
+  form.addEventListener("submit", e => {
+    let valid = true;
+    warning.style.display = "none";
+
+    // Validate Funding
+    const funding = document.getElementById("id_funding");
+    funding.classList.remove("field-error");
+    if (!funding.value) {
+      funding.classList.add("field-error");
+      valid = false;
+    }
+
+    // Validate Items
+    document.querySelectorAll("#formset-body tr.item-row:not(.deleted-row)").forEach(row => {
+      const desc = row.querySelector('[name$="description"]');
+      const qty = row.querySelector('[name$="quantity"]');
+      if (!desc?.value.trim() || !qty?.value.trim()) {
+        desc?.classList.add("field-error");
+        qty?.classList.add("field-error");
+        valid = false;
+      } else {
+        desc?.classList.remove("field-error");
+        qty?.classList.remove("field-error");
+      }
+    });
+
+    if (!valid) {
+      e.preventDefault();
+      warning.style.display = "block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  });
 });
 </script>
 

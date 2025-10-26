@@ -67,6 +67,8 @@ class PurchaseRequest(models.Model):
         ("disqualified", "Disqualified Bidder"),
     ]
 
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="draft")
+
     FUNDING_CHOICES = [
         ("IGF", "Internally Generated Fund (IGF)"),
         ("RAF", "Regular Agency Fund (RAF)"),

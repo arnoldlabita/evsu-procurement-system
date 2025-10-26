@@ -76,29 +76,23 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
         return context
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='Requisitioner').exists())
 def requisitioner_dashboard(request):
+    # Get PRs created by the logged-in user
     user_prs = PurchaseRequest.objects.filter(created_by=request.user)
 
-    # Count only this user's unassigned PRs
-    unassigned_count = user_prs.filter(
-        Q(pr_number__isnull=True) |
-        Q(pr_number__exact='') |
-        Q(pr_number__iexact='Unassigned') |
-        Q(pr_number__iexact='None')
-    ).count()
+    # Count unassigned PRs (no PR number)
+    unassigned_count = user_prs.filter(pr_number__isnull=True).count()
 
-    # Count active PRs (example statuses)
-    in_progress_count = user_prs.filter(
-        status__in=['submitted', 'verified', 'in_progress']
-    ).count()
+    # Count PRs that are already submitted or under review
+    in_progress_count = user_prs.filter(status__in=["For Verification", "Under Review", "Processing"]).count()
 
     context = {
-        'unassigned_count': unassigned_count,
-        'in_progress_count': in_progress_count,
-        'total_count': user_prs.count(),
+        "unassigned_count": unassigned_count,
+        "in_progress_count": in_progress_count,
     }
-    return render(request, 'procurement/dashboard_requisitioner.html', context)
+
+    return render(request, "procurement/requisitioner_dashboard.html", context)
+
 
 # -----------------------
 # PURCHASE REQUEST VIEWS
@@ -503,47 +497,6 @@ def submit_pr_for_verification(request, pk):
     return redirect("procurement:pr_detail", pk=pk)
 
 
-from django.http import JsonResponse
-
-@login_required
-def update_pr_status(request, pk):
-    """Procurement staff updates PR status by entering a note."""
-    pr = get_object_or_404(PurchaseRequest, pk=pk)
-
-    if request.method == "POST":
-        note = request.POST.get("note", "").strip()
-
-        if not note:
-            if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"error": "Note required"}, status=400)
-            messages.warning(request, "Please enter a note before submitting.")
-            return redirect("procurement:pr_detail", pk=pk)
-
-        # Save note + update status automatically
-        pr.notes = note
-        pr.update_status_from_notes()
-        pr.last_update = timezone.now()
-        pr.save()
-
-        # ✅ AJAX response
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({
-                "status": pr.get_status_display(),
-                "badge_class": (
-                    "success" if pr.status == "verified" else
-                    "primary" if pr.status == "submitted" else
-                    "secondary" if pr.status == "closed" else
-                    "warning text-dark"
-                ),
-                "last_update": pr.last_update.strftime("%b %d, %Y %H:%M"),
-            })
-
-        # Fallback for normal form POST
-        messages.success(request, f"Status updated to {pr.get_status_display()}.")
-        return redirect("procurement:pr_detail", pk=pr.pk)
-
-    # GET → render modal version directly if ever visited by URL
-    return render(request, "procurement/update_pr_status.html", {"pr": pr})
 
 @login_required
 def pr_preview(request, pk):
@@ -605,3 +558,74 @@ def update_mode_ajax(request, pk):
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+# Helper to compute allowed statuses server-side (same mapping as JS)
+def _allowed_statuses_for_mode(mode):
+    DEFAULT = ['draft','submitted','verified','endorsed','approved']
+    RFQ_FLOW = ['for_rfq','rfq_created','rfq_closed','for_aoq','aoq_approved','for_po','po_issued','delivered','inspected','closed']
+    PB_FLOW = ['for_pb','pre_bid','bidding_open','bid_evaluation','post_qualification','bac_resolution','notice_of_award','contract_preparation','contract_signed','notice_to_proceed','delivery_completed','payment_processing','cancelled','failed_bidding','disqualified']
+
+    RFQ_FLOW_MODES = set([
+        'Direct Contracting','Direct Acquisition','Repeat Order','Small Value Procurement',
+        'Negotiated Procurement','Direct Sales','Direct Procurement for Science, Technology and Innovation'
+    ])
+    PB_FLOW_MODES = set([
+        'Competitive Bidding','Limited Source Bidding','Competitive Dialogue','Unsolicited Offer with Bid Matching'
+    ])
+
+    if mode in RFQ_FLOW_MODES:
+        return RFQ_FLOW
+    if mode in PB_FLOW_MODES:
+        return PB_FLOW
+    return DEFAULT
+
+@login_required
+@csrf_exempt  # we rely on X-CSRFToken header; you may remove csrf_exempt if you use standard CSRF middleware and cookie header
+def update_status_ajax(request, pk):
+    """
+    JSON POST: { "status": "<new_status>" }
+    Permissions:
+      - Procurement (and Admin) can update status.
+      - Requisitioner cannot modify status (read-only).
+    Server-side validates allowed statuses for the PR's mode before saving.
+    """
+    try:
+        pr = PurchaseRequest.objects.get(pk=pk)
+    except PurchaseRequest.DoesNotExist:
+        return JsonResponse({"success": False, "error": "PR not found"}, status=404)
+
+    # RBAC: only procurement/admin can change status
+    if not (request.user.groups.filter(name='Procurement').exists() or request.user.is_superuser or request.user.groups.filter(name='Admin').exists()):
+        return JsonResponse({"success": False, "error": "Permission denied"}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({"success": False, "error": "Invalid request method (POST required)"}, status=400)
+
+    try:
+        payload = json.loads(request.body or '{}')
+        new_status = (payload.get('status') or '').strip()
+    except Exception as e:
+        return JsonResponse({"success": False, "error": "Invalid JSON payload"}, status=400)
+
+    if not new_status:
+        return JsonResponse({"success": False, "error": "Status value required"}, status=400)
+
+    allowed = _allowed_statuses_for_mode(pr.mode_of_procurement or '')
+
+    if new_status not in allowed:
+        return JsonResponse({"success": False, "error": "Status not allowed for the current Mode of Procurement"}, status=400)
+
+    # Optionally map status codes to readable labels or set pr.status to new_status directly
+    pr.status = new_status
+    pr.last_update = timezone.now()
+    pr.save(update_fields=['status','last_update'])
+
+    # Return success and formatted last_update
+    return JsonResponse({
+        "success": True,
+        "last_update": pr.last_update.strftime("%b %d, %Y %H:%M"),
+    })

@@ -41,12 +41,11 @@ urlpatterns = [
     path("prs/<int:pk>/workflow/", PRWorkflowView.as_view(), name="pr_workflow"),
     path('prs/<int:pk>/assign/', views.assign_pr_number, name='assign_pr_number'),
     path("prs/<int:pk>/edit/", views.PRUpdateView.as_view(), name="pr_edit"),
-    path("pr/<int:pk>/update-status/", views.update_pr_status, name="update_pr_status"),
     path("prs/<int:pk>/preview/", views.pr_preview, name="pr_preview"),
     path('prs/unassigned/', UnassignedPRListView.as_view(), name='unassigned_pr_list'),
     path("update_mode_ajax/<int:pk>/", views.update_mode_ajax, name="update_mode_ajax"),
-
-
+    path("dashboard/requisitioner/", views.requisitioner_dashboard, name="dashboard_requisitioner"),
+    path('update_status_ajax/<int:pk>/', views.update_status_ajax, name='update_pr_status'),
 
     # ----------------------------
     # Requests for Quotation (RFQ)

@@ -1,22 +1,33 @@
 {% extends "procurement/base.html" %}
 {% block content %}
-<div class="container mt-4">
-  <h3 class="text-maroon">Update Status — {{ pr.pr_number }}</h3>
+<div class="container mt-5">
+  <div class="card shadow-sm p-4">
+    <h4 class="text-maroon mb-3">
+      Update PR Status — {{ pr.pr_number|default:"(Unassigned)" }}
+    </h4>
 
-  <form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-      <label for="note" class="form-label">Enter Staff Note:</label>
-      <textarea name="note" id="note" rows="3" class="form-control" placeholder="e.g. PO sent, goods received"></textarea>
-    </div>
+    <form method="POST" id="statusForm">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="status" class="form-label fw-bold">Select New Status</label>
+        <select name="status" id="status" class="form-select" required>
+          {% for value, label in pr.STATUS_CHOICES %}
+            <option value="{{ value }}" {% if pr.status == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
 
-    <button type="submit" class="btn btn-maroon">Update Status</button>
-    <a href="{% url 'procurement:pr_detail' pr.pk %}" class="btn btn-outline-secondary">Cancel</a>
-  </form>
-
-  <div class="mt-3">
-    <p><strong>Current Status:</strong> {{ pr.get_status_display }}</p>
-    <p><strong>Last Updated:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
+      <button type="submit" class="btn btn-maroon">Update</button>
+      <a href="{% url 'procurement:pr_detail' pr.pk %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
   </div>
 </div>
+
+<style>
+.text-maroon { color: #800000; }
+.btn-maroon { background-color: #800000; color: #fff; border: none; }
+.btn-maroon:hover { background-color: #a00000; color: #fff; }
+</style>
 {% endblock %}

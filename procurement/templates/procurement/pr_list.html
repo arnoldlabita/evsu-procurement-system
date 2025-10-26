@@ -22,19 +22,29 @@
     <tr id="pr-row-{{ pr.pk }}">
       <td>{{ pr.pr_number|default:"(Draft)" }}</td>
       <td>{{ pr.office_section }}</td>
-      <td class="status-cell">
-        <span class="badge
-          {% if pr.status == 'verified' %}bg-success
-          {% elif pr.status == 'submitted' %}bg-primary
-          {% elif pr.status == 'closed' %}bg-secondary
-          {% else %}bg-warning text-dark{% endif %}">
-          {{ pr.get_status_display }}
-        </span>
+
+      <!-- ✅ STATUS COLUMN -->
+      <td class="status-column">
+        {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+          <select class="form-select form-select-sm status-select"
+                  data-pr-id="{{ pr.pk }}"
+                  data-current="{{ pr.status|default:'' }}"
+                  data-mode="{{ pr.mode_of_procurement|default:'' }}">
+          </select>
+        {% else %}
+          <span class="badge
+            {% if pr.status == 'verified' %}bg-success
+            {% elif pr.status == 'submitted' %}bg-primary
+            {% elif pr.status == 'closed' %}bg-secondary
+            {% else %}bg-warning text-dark{% endif %}">
+            {{ pr.get_status_display }}
+          </span>
+        {% endif %}
       </td>
 
+      <!-- ✅ MODE OF PROCUREMENT COLUMN -->
       <td class="mode-column">
-        {% if user|has_group:"Procurement" %}
-          <!-- Main Dropdown -->
+        {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
           <select name="mode_of_procurement"
                   class="form-select form-select-sm mode-select"
                   data-pr-id="{{ pr.pk }}"
@@ -53,7 +63,7 @@
             <option value="Direct Procurement for Science, Technology and Innovation" {% if pr.mode_of_procurement == "Direct Procurement for Science, Technology and Innovation" %}selected{% endif %}>Direct Procurement for Science, Technology and Innovation</option>
           </select>
 
-          <!-- Negotiated Procurement Subtype -->
+          <!-- ✅ Negotiated Procurement Subtype -->
           <select name="negotiated_type"
                   id="submode-{{ pr.pk }}"
                   class="form-select form-select-sm mt-1 submode-select"
@@ -75,7 +85,6 @@
             <option value="Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions" {% if pr.negotiated_type == "Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions" %}selected{% endif %}>Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions</option>
           </select>
         {% else %}
-          <!-- Read-only view for Requisitioners -->
           <span title="{{ pr.mode_of_procurement }}{% if pr.negotiated_type %} - {{ pr.negotiated_type }}{% endif %}">
             {{ pr.mode_of_procurement }}
             {% if pr.mode_of_procurement == "Negotiated Procurement" and pr.negotiated_type %}
@@ -88,16 +97,6 @@
       <td class="update-cell">{{ pr.last_update|localtime|date:"M d, Y h:i A" }}</td>
       <td class="text-center">
         <a href="{% url 'procurement:pr_detail' pr.id %}" class="btn btn-sm btn-outline-dark">View</a>
-        {% if user|has_group:"Procurement" %}
-        <button type="button"
-                class="btn btn-sm btn-outline-maroon"
-                data-bs-toggle="modal"
-                data-bs-target="#statusModal"
-                data-pr-id="{{ pr.pk }}"
-                data-pr-number="{{ pr.pr_number|default:'(Draft)' }}">
-          Update Status
-        </button>
-        {% endif %}
       </td>
     </tr>
     {% empty %}
@@ -106,131 +105,129 @@
   </tbody>
 </table>
 
-<!-- ✅ Status Update Modal -->
-<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="statusForm" data-url="{% url 'procurement:update_pr_status' 0 %}">
-        {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title text-maroon" id="modalTitle">Update Status</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small" id="modalSubtitle"></p>
-          <label class="form-label">Staff Note</label>
-          <textarea name="note" rows="3" class="form-control" placeholder="e.g. PO sent, goods received"></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-maroon">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+<!-- ====================== -->
+<!-- JAVASCRIPT SECTION -->
+<!-- ====================== -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const DEFAULT_STATUS = [
+    ['draft','Draft'],['submitted','Submitted for Verification'],
+    ['verified','Verified'],['endorsed','Endorsed for Approval'],['approved','Approved']
+  ];
+  const RFQ_FLOW_STATUS = [
+    ['for_rfq','For RFQ Preparation'],['rfq_created','RFQ Created'],['rfq_closed','RFQ Closed'],
+    ['for_aoq','For AOQ Preparation'],['aoq_approved','AOQ Approved'],
+    ['for_po','For PO Preparation'],['po_issued','PO Issued'],
+    ['delivered','Items Delivered'],['inspected','Inspected'],['closed','Closed']
+  ];
+  const PB_FLOW_STATUS = [
+    ['for_pb','For Public Bidding'],['pre_bid','Pre-Bid Conference'],['bidding_open','Bidding Open'],
+    ['bid_evaluation','Bid Evaluation'],['post_qualification','Post-Qualification'],
+    ['bac_resolution','BAC Resolution Issued'],['notice_of_award','Notice of Award Issued'],
+    ['contract_preparation','Contract Preparation'],['contract_signed','Contract Signed'],
+    ['notice_to_proceed','Notice to Proceed Issued'],['delivery_completed','Delivery Completed'],
+    ['payment_processing','Payment Processing'],['cancelled','Cancelled'],
+    ['failed_bidding','Failed Bidding'],['disqualified','Disqualified Bidder']
+  ];
+  const RFQ_FLOW_MODES = new Set([
+    'Direct Contracting','Direct Acquisition','Repeat Order','Small Value Procurement',
+    'Negotiated Procurement','Direct Sales','Direct Procurement for Science, Technology and Innovation'
+  ]);
+  const PB_FLOW_MODES = new Set([
+    'Competitive Bidding','Limited Source Bidding','Competitive Dialogue','Unsolicited Offer with Bid Matching'
+  ]);
 
-<!-- ✅ Bootstrap Toast for Feedback -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
-  <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert">
-    <div class="d-flex">
-      <div class="toast-body" id="toast-body">Status updated successfully!</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-    </div>
-  </div>
-</div>
+  function getCSRFToken() {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'csrftoken') return decodeURIComponent(value);
+    }
+    return '';
+  }
+
+  function populateStatus(selectEl, mode, currentValue) {
+    selectEl.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = '— Select Status —';
+    selectEl.appendChild(opt);
+
+    let list = DEFAULT_STATUS;
+    if (RFQ_FLOW_MODES.has(mode)) list = RFQ_FLOW_STATUS;
+    else if (PB_FLOW_MODES.has(mode)) list = PB_FLOW_STATUS;
+
+    list.forEach(([val, label]) => {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = label;
+      if (val === currentValue) o.selected = true;
+      selectEl.appendChild(o);
+    });
+  }
+
+  function flashHighlight(element) {
+    element.classList.add('highlight-flash');
+    setTimeout(() => element.classList.remove('highlight-flash'), 1200);
+  }
+
+  async function save(url, data) {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      body: JSON.stringify(data)
+    });
+  }
+
+  document.querySelectorAll('.mode-select').forEach(modeSel => {
+    const prId = modeSel.dataset.prId;
+    const subSel = document.getElementById(modeSel.dataset.subSelectId);
+    const row = document.getElementById(`pr-row-${prId}`);
+
+    modeSel.addEventListener('change', e => {
+      const val = e.target.value;
+      if (val === 'Negotiated Procurement') subSel.style.display = 'block';
+      else { subSel.style.display = 'none'; subSel.value = ''; }
+
+      save(`/procurement/update_mode_ajax/${prId}/`, {
+        mode_of_procurement: val,
+        negotiated_type: subSel.value
+      });
+
+      const statusSel = document.querySelector(`.status-select[data-pr-id="${prId}"]`);
+      if (statusSel) {
+        populateStatus(statusSel, val, '');
+        flashHighlight(row.querySelector('.status-column'));
+      }
+    });
+
+    subSel.addEventListener('change', e => {
+      save(`/procurement/update_mode_ajax/${prId}/`, {
+        mode_of_procurement: modeSel.value,
+        negotiated_type: subSel.value
+      });
+    });
+  });
+
+  document.querySelectorAll('.status-select').forEach(sel => {
+    const prId = sel.dataset.prId;
+    const mode = sel.dataset.mode || '';
+    const current = sel.dataset.current || '';
+    populateStatus(sel, mode, current);
+
+    sel.addEventListener('change', e => {
+      const newStatus = e.target.value;
+      save(`/procurement/update_status_ajax/${prId}/`, { status: newStatus });
+      flashHighlight(sel.closest('.status-column'));
+    });
+  });
+});
+</script>
 
 <style>
 .table-maroon { background-color: #800000; }
 .text-maroon { color: #800000; }
-.btn-maroon { background-color: #800000; color: white; border: none; }
-.btn-maroon:hover { background-color: #a30000; }
-.btn-outline-maroon { color: #800000; border: 1px solid #800000; }
-.btn-outline-maroon:hover { background-color: #800000; color: white; }
-
-/* Limit Mode of Procurement column width */
-.mode-column {
-  max-width: 23ch;
-  width: 23ch;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-.mode-column select {
-  max-width: 100%;
-  width: 100%;
-  font-size: 13px;
-  padding: 3px 4px;
-}
+.mode-column { max-width: 23ch; width: 23ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode-column select, .status-column select { width: 100%; font-size: 13px; padding: 3px 4px; }
+.highlight-flash { background-color: #d4edda !important; transition: background-color 1.2s ease-out; }
 </style>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Toggle sub-dropdown dynamically
-  document.querySelectorAll(".mode-select").forEach(select => {
-    select.addEventListener("change", e => {
-      const selectedValue = e.target.value;
-      const prId = e.target.dataset.prId;
-      const subSelect = document.getElementById(e.target.dataset.subSelectId);
-
-      if (selectedValue === "Negotiated Procurement") {
-        subSelect.style.display = "block";
-      } else {
-        subSelect.style.display = "none";
-        subSelect.value = "";
-      }
-
-      saveProcurementMode(prId, selectedValue, subSelect.value);
-    });
-  });
-
-  document.querySelectorAll(".submode-select").forEach(select => {
-    select.addEventListener("change", e => {
-      const prId = e.target.dataset.prId;
-      const subtype = e.target.value;
-      const mainMode = document.querySelector(`.mode-select[data-pr-id="${prId}"]`).value;
-      saveProcurementMode(prId, mainMode, subtype);
-    });
-  });
-});
-
-// AJAX save function
-function saveProcurementMode(prId, mode, subtype) {
-  fetch(`/procurement/update_mode_ajax/${prId}/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    body: JSON.stringify({
-      mode_of_procurement: mode,
-      negotiated_type: subtype
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      console.log(`✅ PR ${prId} updated: ${mode} ${subtype || ""}`);
-    } else {
-      alert("Failed to update mode: " + (data.error || "Unknown error"));
-    }
-  })
-  .catch(err => console.error("Error:", err));
-}
-
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== "") {
-    for (let cookie of document.cookie.split(";")) {
-      cookie = cookie.trim();
-      if (cookie.startsWith(name + "=")) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-</script>
 {% endblock %}
