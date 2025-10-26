@@ -5,16 +5,19 @@
   <p class="text-muted">Welcome {{ user.first_name }} — Manage procurement documents</p>
 
   <div class="row mt-4">
-    <!-- Pending PRs -->
-    <div class="col-md-3">
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h5 class="text-maroon">Pending PRs</h5>
-          <h3>{{ pr_count }}</h3>
-          <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon">View PRs</a>
-        </div>
-      </div>
+<!-- Unassigned PRs -->
+<div class="col-md-3">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="text-maroon">Unassigned PRs</h5>
+      <h3>{{ unassigned_pr_count }}</h3>
+      <a href="{% url 'procurement:unassigned_pr_list' %}" class="btn btn-outline-maroon">
+        View Unassigned PRs
+      </a>
     </div>
+  </div>
+</div>
+
 
     <!-- RFQs -->
     <div class="col-md-3">

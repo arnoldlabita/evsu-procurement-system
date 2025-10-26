@@ -8,7 +8,11 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
 from django.views.generic import DetailView
-
+from django.db.models import Q
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+from django.views.generic import ListView
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
@@ -56,7 +60,9 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
         context["rfq_count"] = RequestForQuotation.objects.count()
         context["aoq_count"] = AbstractOfQuotation.objects.count()
         context["po_count"] = PurchaseOrder.objects.count()
-
+        context["unassigned_pr_count"] = PurchaseRequest.objects.filter(
+            Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
+        ).count()
 
         if user.groups.filter(name="Procurement").exists():
             context["welcome_text"] = "Procurement Officer Dashboard"
@@ -69,6 +75,31 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
 
         return context
 
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name='Requisitioner').exists())
+def requisitioner_dashboard(request):
+    user_prs = PurchaseRequest.objects.filter(created_by=request.user)
+
+    # Count only this user's unassigned PRs
+    unassigned_count = user_prs.filter(
+        Q(pr_number__isnull=True) |
+        Q(pr_number__exact='') |
+        Q(pr_number__iexact='Unassigned') |
+        Q(pr_number__iexact='None')
+    ).count()
+
+    # Count active PRs (example statuses)
+    in_progress_count = user_prs.filter(
+        status__in=['submitted', 'verified', 'in_progress']
+    ).count()
+
+    context = {
+        'unassigned_count': unassigned_count,
+        'in_progress_count': in_progress_count,
+        'total_count': user_prs.count(),
+    }
+    return render(request, 'procurement/dashboard_requisitioner.html', context)
+
 # -----------------------
 # PURCHASE REQUEST VIEWS
 # -----------------------
@@ -77,6 +108,21 @@ class PRListView(LoginRequiredMixin, generic.ListView):
     template_name = "procurement/pr_list.html"
     context_object_name = "prs"
     ordering = ["-created_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # 🧩 Requisitioners can only see their own PRs
+        if user.groups.filter(name="Requisitioner").exists():
+            return PurchaseRequest.objects.filter(created_by=user).order_by("-created_at")
+
+        # 🧩 Procurement & Admin can see everything
+        if user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return PurchaseRequest.objects.all().order_by("-created_at")
+
+        # Default: empty queryset for other roles
+        return PurchaseRequest.objects.none()
+
 
 # -----------------------
 # CREATE PURCHASE REQUEST (REQUISITIONER)
@@ -339,6 +385,16 @@ class PRDetailView(LoginRequiredMixin, generic.DetailView):
     template_name = "procurement/pr_detail.html"
     context_object_name = "pr"
 
+    def get_queryset(self):
+        user = self.request.user
+
+        # 🧩 Requisitioners can only access their own PRs
+        if user.groups.filter(name="Requisitioner").exists():
+            return PurchaseRequest.objects.filter(created_by=user)
+
+        # 🧩 Procurement & Admins can access all
+        return PurchaseRequest.objects.all()
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         pr = self.object
@@ -348,6 +404,7 @@ class PRDetailView(LoginRequiredMixin, generic.DetailView):
         )
         context["grand_total"] = grand_total
         return context
+
 
 
 # Update View
@@ -399,27 +456,25 @@ class PRUpdateView(LoginRequiredMixin, generic.UpdateView):
             "pr": pr
         })
 
-from django.shortcuts import render, get_object_or_404
+    def dispatch(self, request, *args, **kwargs):
+        pr = self.get_object()
+        if request.user.groups.filter(name="Requisitioner").exists() and pr.created_by != request.user:
+            messages.error(request, "You are not authorized to edit this purchase request.")
+            return redirect("procurement:dashboard")
+        return super().dispatch(request, *args, **kwargs)
+    
+
 
 @login_required
 def pr_preview(request, pk):
-    """Print-friendly view of the Purchase Request."""
     pr = get_object_or_404(PurchaseRequest, pk=pk)
-    # compute grand total manually
-    total_amount = sum(
-        (item.quantity or 0) * (item.unit_cost or 0)
-        for item in pr.items.all()
-    )
-
-    return render(
-        request,
-        "procurement/pr_preview.html",
-        {
-            "pr": pr,
-            "total_amount": total_amount,  # ✅ now available in the template
-        }
-    )
-
+    auto_print = request.GET.get("auto_print") == "true"
+    total_amount = sum(item.quantity * item.unit_cost for item in pr.items.all())
+    return render(request, "procurement/pr_preview.html", {
+        "pr": pr,
+        "total_amount": total_amount,
+        "auto_print": auto_print,
+    })
 
 
 @login_required
@@ -435,12 +490,18 @@ def submit_pr_for_verification(request, pk):
     if pr.status != "draft":
         messages.warning(request, "This request has already been submitted.")
         return redirect("procurement:pr_detail", pk=pk)
+    
+        # ✅ Only the owner can submit their own PR
+    if request.user != pr.created_by:
+        messages.error(request, "You can only submit your own purchase requests.")
+        return redirect("procurement:dashboard")
 
     # Update status
     pr.status = "submitted"
     pr.save()
     messages.success(request, f"Purchase Request {pr.pr_number or pr.id} has been submitted for verification.")
     return redirect("procurement:pr_detail", pk=pk)
+
 
 from django.http import JsonResponse
 
@@ -489,4 +550,58 @@ def pr_preview(request, pk):
     """Print-friendly view of the Purchase Request."""
     pr = get_object_or_404(PurchaseRequest, pk=pk)
     return render(request, "procurement/pr_preview.html", {"pr": pr, "auto_print": True})
+
+
+class UnassignedPRListView(LoginRequiredMixin, ListView):
+    model = PurchaseRequest
+    template_name = 'procurement/unassigned_pr_list.html'
+    context_object_name = 'prs'
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base filter for unassigned PRs
+        base_filter = Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
+
+        # 🧩 Requisitioners → only their own unassigned PRs
+        if user.groups.filter(name="Requisitioner").exists():
+            return PurchaseRequest.objects.filter(created_by=user).filter(base_filter).order_by('-created_at')
+
+        # 🧩 Procurement/Admin → all unassigned PRs
+        if user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return PurchaseRequest.objects.filter(base_filter).order_by('-created_at')
+
+        # 🧩 Default → none
+        return PurchaseRequest.objects.none()
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+
+@login_required
+@user_passes_test(in_procurement_group)
+@csrf_exempt
+def update_mode_ajax(request, pk):
+    """AJAX endpoint to update Mode of Procurement dynamically."""
+    try:
+        pr = PurchaseRequest.objects.get(pk=pk)
+    except PurchaseRequest.DoesNotExist:
+        return JsonResponse({"success": False, "error": "PR not found"}, status=404)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            mode = data.get("mode_of_procurement", "").strip()
+            subtype = data.get("negotiated_type", "").strip()
+
+            pr.mode_of_procurement = mode or None
+            pr.negotiated_type = subtype or None
+            pr.save(update_fields=["mode_of_procurement", "negotiated_type"])
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
 

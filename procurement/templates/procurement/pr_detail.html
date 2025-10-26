@@ -1,6 +1,7 @@
 {% extends "procurement/base.html" %}
 {% load group_tags %}
 {% load humanize %}
+{% load tz %}
 {% block content %}
 
 <div class="container mt-4">
@@ -79,34 +80,44 @@
       {% endif %}
     {% endif %}
 
-    {% if user|has_group:"Procurement" %}
-      {% if not pr.pr_number %}
-        <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
-      {% endif %}
-      <button type="button" class="btn btn-outline-maroon" data-bs-toggle="modal" data-bs-target="#statusModal">
-        Update Status
-      </button>
-      <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
-      <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
+{% if user|has_group:"Procurement" %}
+  {% if not pr.pr_number %}
+    <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
+  {% endif %}
+  <button type="button" class="btn btn-outline-maroon" data-bs-toggle="modal" data-bs-target="#statusModal">
+    Update Status
+  </button>
+  <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
+  <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
 
-      {% if pr.notes %}
-        <p><strong>Last Update:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
-        <p><strong>Staff Note:</strong> {{ pr.notes }}</p>
-      {% endif %}
-    {% endif %}
+  {% if pr.notes %}
+    <p><strong>Last Update:</strong> {{ pr.last_update|date:"M d, Y H:i" }}</p>
+    <p><strong>Staff Note:</strong> {{ pr.notes }}</p>
+  {% endif %}
+{% endif %}
 
-    <!-- ✅ Print Button appears only if PR number exists -->
-    {% if pr.pr_number %}
-      <a href="{% url 'procurement:pr_preview' pr.id %}" target="_blank" class="btn btn-outline-dark">
-        🖨️ Print PR
-      </a>
-    {% else %}
-      <button class="btn btn-secondary" disabled title="Assign PR number first">
-        🖨️ Print PR
-      </button>
-    {% endif %}
+<!-- ✅ Print Button appears only if PR number exists -->
+{% if pr.pr_number %}
+<a href="{% url 'procurement:pr_preview' pr.pk %}" 
+  target="_blank" 
+  class="btn btn-secondary">
+  🖨️ Print PR
+</a>
+{% else %}
+  <button class="btn btn-secondary" disabled title="Assign PR number first">
+    🖨️ Print PR
+  </button>
+{% endif %}
+
   </div>
-</div>
+
+  {% if user|has_group:"Procurement" and pr.notes %}
+  <!-- ✅ Move this OUTSIDE the flexbox -->
+  <div class="mt-2">
+    <p class="mb-0"><strong>Last Update:</strong> {{ pr.last_update|localtime|date:"M d, Y h:i A" }}</p>
+    <p class="mb-0"><strong>Staff Note:</strong> {{ pr.notes }}</p>
+  </div>
+  {% endif %}
 
 <style>
 .text-maroon { color: #800000; }

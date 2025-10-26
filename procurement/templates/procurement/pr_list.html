@@ -12,6 +12,7 @@
       <th>PR No.</th>
       <th>Requesting Office</th>
       <th>Status</th>
+      <th>Mode of Procurement</th>
       <th>Last Update</th>
       <th class="text-center">Actions</th>
     </tr>
@@ -30,6 +31,60 @@
           {{ pr.get_status_display }}
         </span>
       </td>
+
+      <td class="mode-column">
+        {% if user|has_group:"Procurement" %}
+          <!-- Main Dropdown -->
+          <select name="mode_of_procurement"
+                  class="form-select form-select-sm mode-select"
+                  data-pr-id="{{ pr.pk }}"
+                  data-sub-select-id="submode-{{ pr.pk }}">
+            <option value="">— Select Mode —</option>
+            <option value="Competitive Bidding" {% if pr.mode_of_procurement == "Competitive Bidding" %}selected{% endif %}>Competitive Bidding</option>
+            <option value="Limited Source Bidding" {% if pr.mode_of_procurement == "Limited Source Bidding" %}selected{% endif %}>Limited Source Bidding</option>
+            <option value="Competitive Dialogue" {% if pr.mode_of_procurement == "Competitive Dialogue" %}selected{% endif %}>Competitive Dialogue</option>
+            <option value="Unsolicited Offer with Bid Matching" {% if pr.mode_of_procurement == "Unsolicited Offer with Bid Matching" %}selected{% endif %}>Unsolicited Offer with Bid Matching</option>
+            <option value="Direct Contracting" {% if pr.mode_of_procurement == "Direct Contracting" %}selected{% endif %}>Direct Contracting</option>
+            <option value="Direct Acquisition" {% if pr.mode_of_procurement == "Direct Acquisition" %}selected{% endif %}>Direct Acquisition</option>
+            <option value="Repeat Order" {% if pr.mode_of_procurement == "Repeat Order" %}selected{% endif %}>Repeat Order</option>
+            <option value="Small Value Procurement" {% if pr.mode_of_procurement == "Small Value Procurement" %}selected{% endif %}>Small Value Procurement</option>
+            <option value="Negotiated Procurement" {% if pr.mode_of_procurement == "Negotiated Procurement" %}selected{% endif %}>Negotiated Procurement</option>
+            <option value="Direct Sales" {% if pr.mode_of_procurement == "Direct Sales" %}selected{% endif %}>Direct Sales</option>
+            <option value="Direct Procurement for Science, Technology and Innovation" {% if pr.mode_of_procurement == "Direct Procurement for Science, Technology and Innovation" %}selected{% endif %}>Direct Procurement for Science, Technology and Innovation</option>
+          </select>
+
+          <!-- Negotiated Procurement Subtype -->
+          <select name="negotiated_type"
+                  id="submode-{{ pr.pk }}"
+                  class="form-select form-select-sm mt-1 submode-select"
+                  data-pr-id="{{ pr.pk }}"
+                  {% if pr.mode_of_procurement != "Negotiated Procurement" %}style="display:none;"{% endif %}>
+            <option value="">— Select Sub-Type —</option>
+            <option value="Two Failed Biddings" {% if pr.negotiated_type == "Two Failed Biddings" %}selected{% endif %}>Two Failed Biddings</option>
+            <option value="Emergency Cases" {% if pr.negotiated_type == "Emergency Cases" %}selected{% endif %}>Emergency Cases</option>
+            <option value="Take-over of Contracts" {% if pr.negotiated_type == "Take-over of Contracts" %}selected{% endif %}>Take-over of Contracts</option>
+            <option value="Adjacent or Contiguous" {% if pr.negotiated_type == "Adjacent or Contiguous" %}selected{% endif %}>Adjacent or Contiguous</option>
+            <option value="Agency-to-Agency" {% if pr.negotiated_type == "Agency-to-Agency" %}selected{% endif %}>Agency-to-Agency</option>
+            <option value="Scientific, Scholarly or Artistic Work, Exclusive Technology and Media Services" {% if pr.negotiated_type == "Scientific, Scholarly or Artistic Work, Exclusive Technology and Media Services" %}selected{% endif %}>Scientific, Scholarly or Artistic Work, Exclusive Technology and Media Services</option>
+            <option value="Highly Technical Consultants" {% if pr.negotiated_type == "Highly Technical Consultants" %}selected{% endif %}>Highly Technical Consultants</option>
+            <option value="Defense Cooperation Agreements and Inventory-Based Items" {% if pr.negotiated_type == "Defense Cooperation Agreements and Inventory-Based Items" %}selected{% endif %}>Defense Cooperation Agreements and Inventory-Based Items</option>
+            <option value="Lease of Real Property and Venue" {% if pr.negotiated_type == "Lease of Real Property and Venue" %}selected{% endif %}>Lease of Real Property and Venue</option>
+            <option value="Non-Government Organization (NGO) Participation" {% if pr.negotiated_type == "Non-Government Organization (NGO) Participation" %}selected{% endif %}>Non-Government Organization (NGO) Participation</option>
+            <option value="Community Participation" {% if pr.negotiated_type == "Community Participation" %}selected{% endif %}>Community Participation</option>
+            <option value="United Nations (UN) Agencies, International Organizations or International Financing Institutions" {% if pr.negotiated_type == "United Nations (UN) Agencies, International Organizations or International Financing Institutions" %}selected{% endif %}>United Nations (UN) Agencies, International Organizations or International Financing Institutions</option>
+            <option value="Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions" {% if pr.negotiated_type == "Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions" %}selected{% endif %}>Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions</option>
+          </select>
+        {% else %}
+          <!-- Read-only view for Requisitioners -->
+          <span title="{{ pr.mode_of_procurement }}{% if pr.negotiated_type %} - {{ pr.negotiated_type }}{% endif %}">
+            {{ pr.mode_of_procurement }}
+            {% if pr.mode_of_procurement == "Negotiated Procurement" and pr.negotiated_type %}
+              <br><small class="text-muted">{{ pr.negotiated_type }}</small>
+            {% endif %}
+          </span>
+        {% endif %}
+      </td>
+
       <td class="update-cell">{{ pr.last_update|localtime|date:"M d, Y h:i A" }}</td>
       <td class="text-center">
         <a href="{% url 'procurement:pr_detail' pr.id %}" class="btn btn-sm btn-outline-dark">View</a>
@@ -46,7 +101,7 @@
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="5" class="text-center text-muted">No purchase requests yet.</td></tr>
+    <tr><td colspan="6" class="text-center text-muted">No purchase requests yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -85,75 +140,6 @@
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const statusModal = document.getElementById('statusModal');
-  const form = document.getElementById('statusForm');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalSubtitle = document.getElementById('modalSubtitle');
-  const toast = new bootstrap.Toast(document.getElementById('toast'));
-
-  let currentPRId = null;
-
-  // ✅ When modal opens
-  statusModal.addEventListener('show.bs.modal', event => {
-    const button = event.relatedTarget;
-    currentPRId = button.getAttribute('data-pr-id');
-    const prNumber = button.getAttribute('data-pr-number');
-
-    form.reset();
-    modalTitle.textContent = "Update Purchase Request";
-    modalSubtitle.textContent = `PR Number: ${prNumber}`;
-  });
-
-  // ✅ Handle AJAX form submission
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const note = form.querySelector('textarea[name="note"]').value.trim();
-    if (!note) {
-      alert("Please enter a note before saving.");
-      return;
-    }
-
-    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
-
-    try {
-      const response = await fetch(`/procurement/pr/${currentPRId}/update-status/`, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": csrfToken,
-          "X-Requested-With": "XMLHttpRequest",
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({ note })
-      });
-
-      if (!response.ok) throw new Error("Failed to update status.");
-      const data = await response.json();
-
-      // ✅ Update the table row
-      const row = document.getElementById(`pr-row-${currentPRId}`);
-      if (row) {
-        const statusCell = row.querySelector(".status-cell");
-        const updateCell = row.querySelector(".update-cell");
-
-        statusCell.innerHTML = `<span class="badge bg-${data.badge_class}">${data.status}</span>`;
-        updateCell.textContent = data.last_update;
-      }
-
-      // ✅ Close modal and show toast
-      const modal = bootstrap.Modal.getInstance(statusModal);
-      modal.hide();
-      document.getElementById('toast-body').textContent = "Status updated to " + data.status;
-      toast.show();
-
-    } catch (err) {
-      alert("Error: " + err.message);
-    }
-  });
-});
-</script>
-
 <style>
 .table-maroon { background-color: #800000; }
 .text-maroon { color: #800000; }
@@ -161,5 +147,90 @@ document.addEventListener('DOMContentLoaded', () => {
 .btn-maroon:hover { background-color: #a30000; }
 .btn-outline-maroon { color: #800000; border: 1px solid #800000; }
 .btn-outline-maroon:hover { background-color: #800000; color: white; }
+
+/* Limit Mode of Procurement column width */
+.mode-column {
+  max-width: 23ch;
+  width: 23ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.mode-column select {
+  max-width: 100%;
+  width: 100%;
+  font-size: 13px;
+  padding: 3px 4px;
+}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Toggle sub-dropdown dynamically
+  document.querySelectorAll(".mode-select").forEach(select => {
+    select.addEventListener("change", e => {
+      const selectedValue = e.target.value;
+      const prId = e.target.dataset.prId;
+      const subSelect = document.getElementById(e.target.dataset.subSelectId);
+
+      if (selectedValue === "Negotiated Procurement") {
+        subSelect.style.display = "block";
+      } else {
+        subSelect.style.display = "none";
+        subSelect.value = "";
+      }
+
+      saveProcurementMode(prId, selectedValue, subSelect.value);
+    });
+  });
+
+  document.querySelectorAll(".submode-select").forEach(select => {
+    select.addEventListener("change", e => {
+      const prId = e.target.dataset.prId;
+      const subtype = e.target.value;
+      const mainMode = document.querySelector(`.mode-select[data-pr-id="${prId}"]`).value;
+      saveProcurementMode(prId, mainMode, subtype);
+    });
+  });
+});
+
+// AJAX save function
+function saveProcurementMode(prId, mode, subtype) {
+  fetch(`/procurement/update_mode_ajax/${prId}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify({
+      mode_of_procurement: mode,
+      negotiated_type: subtype
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      console.log(`✅ PR ${prId} updated: ${mode} ${subtype || ""}`);
+    } else {
+      alert("Failed to update mode: " + (data.error || "Unknown error"));
+    }
+  })
+  .catch(err => console.error("Error:", err));
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    for (let cookie of document.cookie.split(";")) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+</script>
 {% endblock %}

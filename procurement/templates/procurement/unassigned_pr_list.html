@@ -1,0 +1,152 @@
+{% extends "procurement/base.html" %}
+{% load humanize %}
+{% load tz %}
+{% load group_tags %}
+
+{% block content %}
+<h2 class="text-maroon fw-bold mt-3">Unassigned Purchase Requests</h2>
+
+<table class="table table-bordered align-middle mt-3 shadow-sm">
+  <thead class="table-maroon text-white">
+    <tr>
+      <th>PR No.</th>
+      <th>Requesting Office</th>
+      <th>Status</th>
+      <th>Created At</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for pr in prs %}
+    <tr>
+      <td>(Unassigned)</td>
+      <td>{{ pr.office_section }}</td>
+      <td>{{ pr.get_status_display }}</td>
+      <td>{{ pr.created_at|localtime|date:"M d, Y h:i A" }}</td>
+      <td>
+        <a href="{% url 'procurement:pr_detail' pr.id %}" class="btn btn-sm btn-outline-maroon">
+          View
+        </a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="5" class="text-center text-muted">No unassigned purchase requests.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+
+<!-- ✅ Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="statusForm" data-url="{% url 'procurement:update_pr_status' 0 %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title text-maroon" id="modalTitle">Update Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small" id="modalSubtitle"></p>
+          <label class="form-label">Staff Note</label>
+          <textarea name="note" rows="3" class="form-control" placeholder="e.g. PO sent, goods received"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ Bootstrap Toast for Feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+  <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-body">Status updated successfully!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const statusModal = document.getElementById('statusModal');
+  const form = document.getElementById('statusForm');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalSubtitle = document.getElementById('modalSubtitle');
+  const toast = new bootstrap.Toast(document.getElementById('toast'));
+
+  let currentPRId = null;
+
+  // ✅ When modal opens
+  statusModal.addEventListener('show.bs.modal', event => {
+    const button = event.relatedTarget;
+    currentPRId = button.getAttribute('data-pr-id');
+    const prNumber = button.getAttribute('data-pr-number');
+
+    form.reset();
+    modalTitle.textContent = "Update Purchase Request";
+    modalSubtitle.textContent = `PR Number: ${prNumber}`;
+  });
+
+  // ✅ Handle AJAX form submission
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const note = form.querySelector('textarea[name="note"]').value.trim();
+    if (!note) {
+      alert("Please enter a note before saving.");
+      return;
+    }
+
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    try {
+      const response = await fetch(`/procurement/pr/${currentPRId}/update-status/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({ note })
+      });
+
+      if (!response.ok) throw new Error("Failed to update status.");
+      const data = await response.json();
+
+      // ✅ Update the table row
+      const row = document.getElementById(`pr-row-${currentPRId}`);
+      if (row) {
+        const statusCell = row.querySelector(".status-cell");
+        const updateCell = row.querySelector(".update-cell");
+
+        statusCell.innerHTML = `<span class="badge bg-${data.badge_class}">${data.status}</span>`;
+        updateCell.textContent = data.last_update;
+      }
+
+      // ✅ Close modal and show toast
+      const modal = bootstrap.Modal.getInstance(statusModal);
+      modal.hide();
+      document.getElementById('toast-body').textContent = "Status updated to " + data.status;
+      toast.show();
+
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  });
+});
+</script>
+
+<style>
+.table-maroon { background-color: #800000; }
+.text-maroon { color: #800000; }
+.btn-maroon { background-color: #800000; color: white; border: none; }
+.btn-maroon:hover { background-color: #a30000; }
+.btn-outline-maroon { color: #800000; border: 1px solid #800000; }
+.btn-outline-maroon:hover { background-color: #800000; color: white; }
+</style>
+{% endblock %}

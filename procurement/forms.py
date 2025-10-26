@@ -207,3 +207,12 @@ class PurchaseOrderForm(forms.ModelForm):
             "submission_date": forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             "receiving_office": forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+class ModeOfProcurementForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseRequest
+        fields = ["mode_of_procurement", "negotiated_type"]
+        widgets = {
+            "mode_of_procurement": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "negotiated_type": forms.Select(attrs={"class": "form-select form-select-sm"}),
+        }

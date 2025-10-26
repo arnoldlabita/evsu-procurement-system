@@ -26,10 +26,45 @@ class Supplier(TimestampedModel):
 
 class PurchaseRequest(models.Model):
     STATUS_CHOICES = [
+        # Stage 1: Requisition
         ("draft", "Draft"),
-        ("submitted", "Submitted"),
+        ("submitted", "Submitted for Verification"),
+
+        # Stage 2: Verification / Approval
         ("verified", "Verified"),
+        ("endorsed", "Endorsed for Approval"),
+        ("approved", "Approved"),
+
+        # Stage 3A: Small Value Procurement
+        ("for_rfq", "For RFQ Preparation"),
+        ("rfq_created", "RFQ Created"),
+        ("rfq_closed", "RFQ Closed"),
+        ("for_aoq", "For AOQ Preparation"),
+        ("aoq_approved", "AOQ Approved"),
+        ("for_po", "For PO Preparation"),
+        ("po_issued", "PO Issued"),
+        ("delivered", "Items Delivered"),
+        ("inspected", "Inspected"),
         ("closed", "Closed"),
+
+        # Stage 3B: Competitive Bidding
+        ("for_pb", "For Public Bidding"),
+        ("pre_bid", "Pre-Bid Conference"),
+        ("bidding_open", "Bidding Open"),
+        ("bid_evaluation", "Bid Evaluation"),
+        ("post_qualification", "Post-Qualification"),
+        ("bac_resolution", "BAC Resolution Issued"),
+        ("notice_of_award", "Notice of Award Issued"),
+        ("contract_preparation", "Contract Preparation"),
+        ("contract_signed", "Contract Signed"),
+        ("notice_to_proceed", "Notice to Proceed Issued"),
+        ("delivery_completed", "Delivery Completed"),
+        ("payment_processing", "Payment Processing"),
+
+        # Exceptions
+        ("cancelled", "Cancelled"),
+        ("failed_bidding", "Failed Bidding"),
+        ("disqualified", "Disqualified Bidder"),
     ]
 
     FUNDING_CHOICES = [
@@ -38,6 +73,55 @@ class PurchaseRequest(models.Model):
         ("TRF", "Trust Receipt Fund (TRF)"),
         ("BRF", "Business Related Fund (BRF)"),
     ]
+
+    MODE_OF_PROCUREMENT_CHOICES = [
+        ("Competitive Bidding", "Competitive Bidding"),
+        ("Limited Source Bidding", "Limited Source Bidding"),
+        ("Competitive Dialogue", "Competitive Dialogue"),
+        ("Unsolicited Offer with Bid Matching", "Unsolicited Offer with Bid Matching"),
+        ("Direct Contracting", "Direct Contracting"),
+        ("Direct Acquisition", "Direct Acquisition"),
+        ("Repeat Order", "Repeat Order"),
+        ("Small Value Procurement", "Small Value Procurement"),
+        ("Negotiated Procurement", "Negotiated Procurement"),
+        ("Direct Sales", "Direct Sales"),
+        ("Direct Procurement for Science, Technology and Innovation", "Direct Procurement for Science, Technology and Innovation"),
+    ]
+
+    NEGOTIATED_SUB_CHOICES = [
+        ("Two Failed Biddings", "Two Failed Biddings"),
+        ("Emergency Cases", "Emergency Cases"),
+        ("Take-over of Contracts", "Take-over of Contracts"),
+        ("Adjacent or Contiguous", "Adjacent or Contiguous"),
+        ("Agency-to-Agency", "Agency-to-Agency"),
+        ("Scientific, Scholarly or Artistic Work, Exclusive Technology and Media Services",
+         "Scientific, Scholarly or Artistic Work, Exclusive Technology and Media Services"),
+        ("Highly Technical Consultants", "Highly Technical Consultants"),
+        ("Defense Cooperation Agreements and Inventory-Based Items",
+         "Defense Cooperation Agreements and Inventory-Based Items"),
+        ("Lease of Real Property and Venue", "Lease of Real Property and Venue"),
+        ("Non-Government Organization (NGO) Participation", "Non-Government Organization (NGO) Participation"),
+        ("Community Participation", "Community Participation"),
+        ("United Nations (UN) Agencies, International Organizations or International Financing Institutions",
+         "United Nations (UN) Agencies, International Organizations or International Financing Institutions"),
+        ("Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions",
+         "Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions"),
+    ]
+
+    mode_of_procurement = models.CharField(
+        max_length=150,
+        choices=MODE_OF_PROCUREMENT_CHOICES,
+        blank=True,
+        null=True,
+    )
+
+    negotiated_type = models.CharField(
+        max_length=200,
+        choices=NEGOTIATED_SUB_CHOICES,
+        blank=True,
+        null=True,
+        help_text="If 'Negotiated Procurement' is selected, specify the type here."
+    )
 
     # --- Requestor Info ---
     requisitioner = models.CharField(max_length=255, blank=True, null=True)

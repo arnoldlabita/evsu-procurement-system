@@ -1,16 +1,67 @@
 {% extends "procurement/base.html" %}
 {% block content %}
-<div class="container text-center mt-4">
-  <h2>Requisitioner Dashboard</h2>
-  <p class="text-muted">Welcome {{ user.first_name }} — Track your purchase requests</p>
-  <div class="row mt-4">
-    <div class="col-md-6 offset-md-3"><div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="text-maroon">Your Purchase Requests</h5>
-        <h3>{{ pr_count }}</h3>
-        <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon">View My PRs</a>
-        <a href="{% url 'procurement:pr_create' %}" class="btn btn-maroon mt-2">+ New PR</a>
-      </div></div></div>
+
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2 class="fw-bold text-maroon">Requisitioner Dashboard</h2>
+    <p class="text-muted">Welcome, {{ user.first_name }} — Manage your Purchase Requests efficiently</p>
+  </div>
+
+  <div class="row justify-content-center g-4">
+
+    <!-- Unassigned PRs Card -->
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body text-center">
+          <h5 class="text-maroon fw-bold">Unassigned PRs</h5>
+          <h3 class="fw-bold text-dark">{{ unassigned_count }}</h3>
+          <p class="text-muted small">PRs without assigned numbers</p>
+          <a href="{% url 'procurement:unassigned_pr_list' %}" class="btn btn-outline-maroon w-75 mt-2">
+            View Unassigned PRs
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-Progress PRs Card -->
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body text-center">
+          <h5 class="text-maroon fw-bold">In Progress</h5>
+          <h3 class="fw-bold text-dark">{{ in_progress_count }}</h3>
+          <p class="text-muted small">PRs submitted or under review</p>
+          <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon w-75 mt-2">
+            View My PRs
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create New PR -->
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body text-center">
+          <h5 class="text-maroon fw-bold">Create New Request</h5>
+          <h3 class="text-secondary display-6">+</h3>
+          <p class="text-muted small">Start a new Purchase Request</p>
+          <a href="{% url 'procurement:pr_create' %}" class="btn btn-maroon w-75 mt-2">
+            + New PR
+          </a>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<style>
+.text-maroon { color: #800000; }
+.btn-maroon { background-color: #800000; color: #fff; border: none; }
+.btn-maroon:hover { background-color: #a00000; color: #fff; }
+.btn-outline-maroon { border: 1px solid #800000; color: #800000; }
+.btn-outline-maroon:hover { background-color: #800000; color: #fff; }
+.card { transition: transform 0.2s ease, box-shadow 0.2s ease; border-radius: 12px; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+</style>
+
 {% endblock %}

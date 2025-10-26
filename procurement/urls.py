@@ -20,6 +20,7 @@ from .views import (
     PODetailView,
     SupplierListView,
     SupplierCreateView,
+    UnassignedPRListView,
 )
 
 app_name = "procurement"
@@ -42,6 +43,10 @@ urlpatterns = [
     path("prs/<int:pk>/edit/", views.PRUpdateView.as_view(), name="pr_edit"),
     path("pr/<int:pk>/update-status/", views.update_pr_status, name="update_pr_status"),
     path("prs/<int:pk>/preview/", views.pr_preview, name="pr_preview"),
+    path('prs/unassigned/', UnassignedPRListView.as_view(), name='unassigned_pr_list'),
+    path("update_mode_ajax/<int:pk>/", views.update_mode_ajax, name="update_mode_ajax"),
+
+
 
     # ----------------------------
     # Requests for Quotation (RFQ)

@@ -1,35 +1,62 @@
 {% extends "procurement/base.html" %}
 {% block content %}
 <div class="container text-center mt-4">
-  <h2>Admin Dashboard</h2>
+  <h2>Procurement Office Dashboard</h2>
+  <p class="text-muted">Welcome {{ user.first_name }} — Manage procurement documents</p>
+
   <div class="row mt-4">
-    <div class="col-md-3"><div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="text-maroon">All Purchase Requests</h5>
-        <h3>{{ pr_count }}</h3>
-        <a href="{% url 'purchase_requests:list' %}" class="btn btn-outline-maroon">Manage PRs</a>
-      </div></div></div>
-
-    <div class="col-md-3"><div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="text-maroon">RFQs</h5>
-        <h3>{{ rfq_count }}</h3>
-        <a href="{% url 'rfqs:list' %}" class="btn btn-outline-maroon">Manage RFQs</a>
-      </div></div></div>
-
-    <div class="col-md-3"><div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="text-maroon">AOQs</h5>
-        <h3>{{ aoq_count }}</h3>
-        <a href="{% url 'aoqs:list' %}" class="btn btn-outline-maroon">Manage AOQs</a>
-      </div></div></div>
-
-    <div class="col-md-3"><div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="text-maroon">Purchase Orders</h5>
-        <h3>{{ po_count }}</h3>
-        <a href="{% url 'pos:list' %}" class="btn btn-outline-maroon">Manage POs</a>
-      </div></div></div>
+<!-- Unassigned PRs -->
+<div class="col-md-3">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="text-maroon">Unassigned PRs</h5>
+      <h3>{{ unassigned_pr_count }}</h3>
+      <a href="{% url 'procurement:unassigned_pr_list' %}" class="btn btn-outline-maroon">
+        View Unassigned PRs
+      </a>
+    </div>
   </div>
 </div>
+
+
+    <!-- RFQs -->
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="text-maroon">RFQs in Process</h5>
+          <h3>{{ rfq_count }}</h3>
+          <a href="{% url 'procurement:rfq_list' %}" class="btn btn-outline-maroon">Go to RFQs</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- AOQs -->
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="text-maroon">Abstracts of Quotation (AOQ)</h5>
+          <h3>{{ aoq_count }}</h3>
+          <a href="{% url 'procurement:aoq_list' %}" class="btn btn-outline-maroon">View AOQs</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- POs -->
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="text-maroon">Purchase Orders (PO)</h5>
+          <h3>{{ po_count }}</h3>
+          <a href="{% url 'procurement:po_list' %}" class="btn btn-outline-maroon">View POs</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.text-maroon { color: #800000; }
+.btn-outline-maroon { border: 1px solid #800000; color: #800000; }
+.btn-outline-maroon:hover { background-color: #800000; color: white; }
+</style>
 {% endblock %}
