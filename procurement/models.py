@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from django.core.validators import RegexValidator
 
 User = get_user_model()
 
@@ -18,6 +19,7 @@ class Supplier(TimestampedModel):
     address = models.CharField(max_length=500, blank=True)
     contact_person = models.CharField(max_length=255, blank=True)
     contact_no = models.CharField(max_length=50, blank=True)
+    contact_email = models.CharField(max_length=50, blank=True)
     tin = models.CharField(max_length=50, blank=True)
     accredited = models.BooleanField(default=False)
 
@@ -36,11 +38,9 @@ class PurchaseRequest(models.Model):
         ("approved", "Approved"),
 
         # Stage 3A: Small Value Procurement
+        ("for_mop", "For BACRes. MOP"),
         ("for_rfq", "For RFQ Preparation"),
-        ("rfq_created", "RFQ Created"),
-        ("rfq_closed", "RFQ Closed"),
-        ("for_aoq", "For AOQ Preparation"),
-        ("aoq_approved", "AOQ Approved"),
+        ("for_award", "For BACRes. Award"),
         ("for_po", "For PO Preparation"),
         ("po_issued", "PO Issued"),
         ("delivered", "Items Delivered"),
@@ -139,8 +139,21 @@ class PurchaseRequest(models.Model):
     )
     attachments = models.FileField(upload_to="pr_attachments/", blank=True, null=True)
 
+
     # --- PR Metadata ---
-    pr_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    pr_number = models.CharField(
+        max_length=100,
+        unique=True,  # ✅ ensures uniqueness
+        validators=[
+            RegexValidator(
+                regex=r'^\d{2}-\d{4}-\d{2}\s.+$',
+                message="PR number must follow the format: (10-0042-25 Requesting Office)."
+            )
+        ],
+        help_text="Format: 10-0042-25 Requesting Office)",
+        blank=True,
+        null=True,
+    )
     pr_date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
 
@@ -182,6 +195,7 @@ class PurchaseRequest(models.Model):
 
     def total_amount(self):
         return sum(item.total_cost() for item in self.items.all())
+
 
 class PRItem(models.Model):
     UNIT_CHOICES = [
@@ -268,3 +282,15 @@ class PurchaseOrder(TimestampedModel):
 
     def __str__(self):
         return self.po_number or f"PO for {self.supplier}"
+    
+class Signatory(models.Model):
+    name = models.CharField(max_length=255)
+    designation = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} — {self.designation}"

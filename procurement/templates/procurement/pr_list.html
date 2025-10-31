@@ -6,6 +6,58 @@
 {% block content %}
 <h2 class="text-maroon fw-bold mt-3">Purchase Requests</h2>
 
+<form method="get" class="row g-2 align-items-end mb-3">
+
+  {% if is_procurement %}
+  <!-- Assigned Status Filter -->
+  <div class="col-md-3">
+    <label class="form-label small fw-bold text-muted">Assigned Status</label>
+    <select name="assigned" class="form-select form-select-sm">
+      <option value="">All</option>
+      <option value="assigned" {% if assigned_filter == "assigned" %}selected{% endif %}>Assigned</option>
+      <option value="unassigned" {% if assigned_filter == "unassigned" %}selected{% endif %}>Unassigned</option>
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- PR Number Search (All users) -->
+  <div class="col-md-3">
+    <label class="form-label small fw-bold text-muted">PR Number</label>
+    <input 
+      type="text" 
+      name="pr_number" 
+      value="{{ pr_number_search }}" 
+      class="form-control form-control-sm"
+      placeholder="Search PR no.">
+  </div>
+
+  {% if is_procurement %}
+  <!-- Office Filter -->
+  <div class="col-md-3">
+    <label class="form-label small fw-bold text-muted">Office</label>
+    <select name="office" class="form-select form-select-sm">
+      <option value="">All</option>
+      {% for office in offices %}
+        <option value="{{ office }}" {% if office_filter == office %}selected{% endif %}>
+          {{ office }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- Filter + Reset Buttons -->
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-maroon btn-sm w-100">Filter</button>
+  </div>
+  <div class="col-md-1">
+    <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
+  </div>
+
+</form>
+
+
+
 <table id="pr-table" class="table table-bordered align-middle mt-3 shadow-sm">
   <thead class="table-maroon text-white">
     <tr>
@@ -20,7 +72,7 @@
   <tbody>
     {% for pr in prs %}
     <tr id="pr-row-{{ pr.pk }}">
-      <td>{{ pr.pr_number|default:"(Draft)" }}</td>
+      <td>{{ pr.pr_number|default:"Unassigned" }}</td>
       <td>{{ pr.office_section }}</td>
 
       <!-- ✅ STATUS COLUMN -->
@@ -115,8 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
     ['verified','Verified'],['endorsed','Endorsed for Approval'],['approved','Approved']
   ];
   const RFQ_FLOW_STATUS = [
-    ['for_rfq','For RFQ Preparation'],['rfq_created','RFQ Created'],['rfq_closed','RFQ Closed'],
-    ['for_aoq','For AOQ Preparation'],['aoq_approved','AOQ Approved'],
+    ['for_mop','For BACRes. MOP'],
+    ['for_rfq','For RFQ Preparation'],
+    ['for_award','For BACRes. Award'],
     ['for_po','For PO Preparation'],['po_issued','PO Issued'],
     ['delivered','Items Delivered'],['inspected','Inspected'],['closed','Closed']
   ];
@@ -228,6 +281,15 @@ document.addEventListener("DOMContentLoaded", () => {
 .mode-column { max-width: 23ch; width: 23ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode-column select, .status-column select { width: 100%; font-size: 13px; padding: 3px 4px; }
 .highlight-flash { background-color: #d4edda !important; transition: background-color 1.2s ease-out; }
+
+.btn-maroon {
+  background-color: #800000;
+  color: #fff;
+}
+.btn-maroon:hover {
+  background-color: #a00000;
+  color: #fff;
+}
 </style>
 
 {% endblock %}

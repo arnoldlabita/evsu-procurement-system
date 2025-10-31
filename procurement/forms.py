@@ -1,5 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.core.exceptions import ValidationError
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
@@ -128,6 +129,7 @@ class SupplierForm(forms.ModelForm):
             "address": forms.TextInput(attrs={"class": "form-control"}),
             "contact_person": forms.TextInput(attrs={"class": "form-control"}),
             "contact_no": forms.TextInput(attrs={"class": "form-control"}),
+            "contact_email": forms.TextInput(attrs={"class": "form-control"}),
             "tin": forms.TextInput(attrs={"class": "form-control"}),
             "accredited": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
@@ -216,3 +218,24 @@ class ModeOfProcurementForm(forms.ModelForm):
             "mode_of_procurement": forms.Select(attrs={"class": "form-select form-select-sm"}),
             "negotiated_type": forms.Select(attrs={"class": "form-select form-select-sm"}),
         }
+
+import re
+
+class PurchaseRequestForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseRequest
+        fields = '__all__'
+
+    def clean_pr_number(self):
+        pr_number = self.cleaned_data.get('pr_number')
+
+        # ✅ Check format
+        pattern = r'^\d{2}-\d{4}-\d{2}\s.+$'
+        if not re.match(pattern, pr_number):
+            raise ValidationError("PR number must follow the format: (e.g., 10-0042-25 Requesting Office).")
+
+        # ✅ Check duplicates (case-insensitive)
+        if PurchaseRequest.objects.filter(pr_number__iexact=pr_number).exists():
+            raise ValidationError("This PR number already exists. Please use a unique one.")
+
+        return pr_number

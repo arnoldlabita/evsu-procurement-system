@@ -8,6 +8,7 @@ from .models import (
     AbstractOfQuotation,
     AOQLine,
     PurchaseOrder,
+    Signatory,
 )
 
 
@@ -54,3 +55,8 @@ admin.site.register(AgencyProcurementRequest)
 admin.site.register(AbstractOfQuotation)
 admin.site.register(AOQLine)
 admin.site.register(PurchaseOrder)
+
+@admin.register(Signatory)
+class SignatoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'designation', 'created_at')
+    search_fields = ('name', 'designation')

@@ -46,6 +46,14 @@ urlpatterns = [
     path("update_mode_ajax/<int:pk>/", views.update_mode_ajax, name="update_mode_ajax"),
     path("dashboard/requisitioner/", views.requisitioner_dashboard, name="dashboard_requisitioner"),
     path('update_status_ajax/<int:pk>/', views.update_status_ajax, name='update_pr_status'),
+    path("signatories/", views.SignatoryListView.as_view(), name="signatory_list"),
+    path("signatories/add/", views.SignatoryCreateView.as_view(), name="signatory_create"),
+    path("signatories/add/ajax/", views.signatory_add_ajax, name="signatory_add_ajax"),
+    path("signatories/<int:pk>/edit/view/", views.SignatoryUpdateView.as_view(), name="signatory_edit"),
+    path("signatories/<int:pk>/delete/view/", views.SignatoryDeleteView.as_view(), name="signatory_delete"),
+    # AJAX endpoints used by your JS:
+    path("signatories/<int:pk>/edit/", views.signatory_edit_ajax, name="signatory_edit_ajax"),
+    path("signatories/<int:pk>/delete/", views.signatory_delete_ajax, name="signatory_delete_ajax"),
 
     # ----------------------------
     # Requests for Quotation (RFQ)

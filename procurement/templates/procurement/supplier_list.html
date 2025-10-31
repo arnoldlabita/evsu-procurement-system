@@ -6,7 +6,7 @@
 <thead class="table-maroon"><tr><th>Name</th><th>Contact</th><th>Accredited</th></tr></thead>
 <tbody>
 {% for s in suppliers %}
-<tr><td>{{ s.name }}</td><td>{{ s.contact_no }}</td><td>{{ s.accredited }}</td></tr>
+<tr><td>{{ s.name }}</td><td>{{ s.contact_no }}</td><td>{{ s.contact_email }}</td><td>{{ s.accredited }}</td></tr>
 {% empty %}<tr><td colspan="3">No suppliers.</td></tr>{% endfor %}
 </tbody>
 </table>

@@ -14,7 +14,7 @@
       <div class="card shadow-sm border-0 h-100">
         <div class="card-body text-center">
           <h5 class="text-maroon fw-bold">Unassigned PRs</h5>
-          <h3 class="fw-bold text-dark">{{ unassigned_count }}</h3>
+          <h3 class="fw-bold text-dark">{{ unassigned_pr_count }}</h3>
           <p class="text-muted small">PRs without assigned numbers</p>
           <a href="{% url 'procurement:unassigned_pr_list' %}" class="btn btn-outline-maroon w-75 mt-2">
             View Unassigned PRs
@@ -23,19 +23,7 @@
       </div>
     </div>
 
-    <!-- In-Progress PRs Card -->
-    <div class="col-md-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body text-center">
-          <h5 class="text-maroon fw-bold">In Progress</h5>
-          <h3 class="fw-bold text-dark">{{ in_progress_count }}</h3>
-          <p class="text-muted small">PRs submitted or under review</p>
-          <a href="{% url 'procurement:pr_list' %}" class="btn btn-outline-maroon w-75 mt-2">
-            View My PRs
-          </a>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Create New PR -->
     <div class="col-md-4">

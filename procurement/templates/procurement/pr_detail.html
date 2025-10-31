@@ -71,25 +71,27 @@
 
   <div class="mt-3 d-flex flex-wrap gap-2 no-print">
     {% if user|has_group:"Requisitioner" %}
-      {% if pr.status == 'draft' %}
-        <a href="{% url 'procurement:pr_edit' pr.pk %}" class="btn btn-outline-maroon">Edit Request</a>
-        <form method="post" action="{% url 'procurement:submit_pr' pr.pk %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-maroon">Submit for Verification</button>
-        </form>
-      {% endif %}
+    {% if pr.status == 'draft' %}
+    <a href="{% url 'procurement:pr_edit' pr.pk %}" class="btn btn-outline-maroon">Edit Request</a>
+    <form method="post" action="{% url 'procurement:submit_pr' pr.pk %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-maroon">Submit for Verification</button>
+    </form>
+    {% endif %}
     {% endif %}
 
-{% if user|has_group:"Procurement" %}
+  {% if user|has_group:"Procurement" %}
   {% if not pr.pr_number %}
     <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-success">Assign PR Number</a>
   {% endif %}
 
-  <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
-  <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
+    <a href="{% url 'procurement:create_rfq' pr.pk %}" class="btn btn-outline-maroon">Create RFQ</a>
+    <a href="{% url 'procurement:create_apr' pr.pk %}" class="btn btn-outline-maroon">Create APR</a>
+  {% endif %}
 
-  
-{% endif %}
+  {% if user|has_group:"Procurement" %}
+  <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-outline-maroon">Edit PR</a>
+  {% endif %}
 
 <!-- ✅ Print Button appears only if PR number exists -->
 {% if pr.pr_number %}
@@ -103,8 +105,7 @@
     🖨️ Print PR
   </button>
 {% endif %}
-
-  </div>
+</div>
 
   {% if user|has_group:"Procurement" and pr.notes %}
   <!-- ✅ Move this OUTSIDE the flexbox -->

@@ -1,6 +1,6 @@
 {% load static %}
 {% load group_tags %}
-<!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -24,6 +24,12 @@
           <li class="nav-item">
             <a class="nav-link" href="{% url 'procurement:pr_list' %}">Purchase Requests</a>
           </li>
+
+          {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'procurement:signatory_list' %}">Signatories</a>
+          </li>
+          {% endif %}
 
           {% if user|has_group:"Procurement" %}
           <li class="nav-item">

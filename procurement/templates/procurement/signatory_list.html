@@ -1,0 +1,209 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+{% load group_tags %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-maroon mb-3">Official Signatories</h2>
+
+  {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+  <button class="btn btn-maroon mb-3" id="addSignatoryBtn">➕ Add Signatory</button>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="bg-maroon text-white">
+        <tr>
+          <th style="width: 45%;">Name</th>
+          <th style="width: 45%;">Designation</th>
+          {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+          <th style="width: 10%;" class="text-center">Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in signatories %}
+        <tr data-id="{{ s.id }}">
+          <td class="name">{{ s.name }}</td>
+          <td class="designation">{{ s.designation }}</td>
+        {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+        <td class="text-center">
+        <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-sm btn-outline-maroon edit-btn">✏ Edit</button>
+            <button class="btn btn-sm btn-outline-danger delete-btn">🗑 Delete</button>
+        </div>
+        </td>
+        {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-center text-muted">No signatories found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ➕ Add Modal -->
+<div class="modal fade" id="addSignatoryModal" tabindex="-1" aria-labelledby="addSignatoryLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-maroon text-white">
+        <h5 class="modal-title" id="addSignatoryLabel">Add Signatory</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="addSignatoryForm">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="addSignatoryName" class="form-label">Name</label>
+            <input type="text" id="addSignatoryName" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="addSignatoryDesignation" class="form-label">Designation</label>
+            <input type="text" id="addSignatoryDesignation" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-maroon btn-sm">💾 Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ✏ Edit Modal -->
+<div class="modal fade" id="editSignatoryModal" tabindex="-1" aria-labelledby="editSignatoryLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-maroon text-white">
+        <h5 class="modal-title" id="editSignatoryLabel">Edit Signatory</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editSignatoryForm">
+        {% csrf_token %}
+        <div class="modal-body">
+          <input type="hidden" id="editSignatoryId">
+          <div class="mb-3">
+            <label for="editSignatoryName" class="form-label">Name</label>
+            <input type="text" id="editSignatoryName" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="editSignatoryDesignation" class="form-label">Designation</label>
+            <input type="text" id="editSignatoryDesignation" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-maroon btn-sm">💾 Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  const csrfToken = getCookie('csrftoken');
+  let currentRow = null;
+
+  // ➕ Add
+  const addBtn = document.getElementById("addSignatoryBtn");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      new bootstrap.Modal(document.getElementById("addSignatoryModal")).show();
+    });
+  }
+
+  document.getElementById("addSignatoryForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = document.getElementById("addSignatoryName").value.trim();
+    const designation = document.getElementById("addSignatoryDesignation").value.trim();
+
+    const res = await fetch(`/procurement/signatories/add/ajax/`, {
+      method: "POST",
+      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, designation })
+    });
+
+    if (res.ok) {
+      location.reload(); // simple reload for now
+    } else {
+      alert("❌ Failed to add signatory.");
+    }
+  });
+
+  // ✏ Edit
+  document.querySelectorAll(".edit-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      currentRow = e.target.closest("tr");
+      const id = currentRow.dataset.id;
+      const name = currentRow.querySelector(".name").textContent.trim();
+      const designation = currentRow.querySelector(".designation").textContent.trim();
+
+      document.getElementById("editSignatoryId").value = id;
+      document.getElementById("editSignatoryName").value = name;
+      document.getElementById("editSignatoryDesignation").value = designation;
+
+      new bootstrap.Modal(document.getElementById("editSignatoryModal")).show();
+    });
+  });
+
+  document.getElementById("editSignatoryForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = document.getElementById("editSignatoryId").value;
+    const name = document.getElementById("editSignatoryName").value.trim();
+    const designation = document.getElementById("editSignatoryDesignation").value.trim();
+
+    const res = await fetch(`/procurement/signatories/${id}/edit/`, {
+      method: "POST",
+      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, designation })
+    });
+
+    if (res.ok) {
+      currentRow.querySelector(".name").textContent = name;
+      currentRow.querySelector(".designation").textContent = designation;
+      bootstrap.Modal.getInstance(document.getElementById("editSignatoryModal")).hide();
+    } else {
+      alert("❌ Failed to update signatory.");
+    }
+  });
+
+  // 🗑 Delete
+  document.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      const row = e.target.closest("tr");
+      const id = row.dataset.id;
+
+      if (!confirm("Are you sure you want to delete this signatory?")) return;
+
+      const res = await fetch(`/procurement/signatories/${id}/delete/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrfToken }
+      });
+
+      if (res.ok) {
+        row.remove();
+      } else {
+        alert("❌ Failed to delete signatory.");
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

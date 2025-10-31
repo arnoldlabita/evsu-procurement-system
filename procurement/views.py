@@ -5,14 +5,17 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.views.generic import DetailView
 from django.db.models import Q
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from django.views.generic import ListView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.http import JsonResponse, HttpResponseForbidden
+from django.views.decorators.http import require_POST
+from .models import Signatory
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
@@ -39,6 +42,8 @@ def in_requisitioner_group(user):
 # -----------------------
 # DASHBOARD
 # -----------------------
+from django.db.models import Q
+
 class DashboardView(LoginRequiredMixin, generic.TemplateView):
     template_name = "procurement/dashboard.html"
 
@@ -55,15 +60,33 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        context["user"] = user
-        context["pr_count"] = PurchaseRequest.objects.filter(created_by=user).count()
+
+        # Base queries
+        pr_qs = PurchaseRequest.objects.all()
+
+        # Default counts (Admin/Procurement see everything)
+        unassigned_filter = Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
+        assigned_filter = ~unassigned_filter
+
+        # --- Requisitioner-specific filtering ---
+        if user.groups.filter(name="Requisitioner").exists():
+            # Only their own PRs
+            user_prs = pr_qs.filter(created_by=user)
+            # Unassigned PRs (no PR number)
+            context["unassigned_pr_count"] = user_prs.filter(unassigned_filter).count()
+            # In Progress PRs: must HAVE pr_number + optional status
+            context["pr_count"] = user_prs.filter(assigned_filter).count()
+        else:
+            # Admin / Procurement see all
+            context["unassigned_pr_count"] = pr_qs.filter(unassigned_filter).count()
+            context["pr_count"] = pr_qs.filter(assigned_filter).count()
+
+        # Other counts remain global (you can scope them too if you like)
         context["rfq_count"] = RequestForQuotation.objects.count()
         context["aoq_count"] = AbstractOfQuotation.objects.count()
         context["po_count"] = PurchaseOrder.objects.count()
-        context["unassigned_pr_count"] = PurchaseRequest.objects.filter(
-            Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
-        ).count()
 
+        # Dashboard label
         if user.groups.filter(name="Procurement").exists():
             context["welcome_text"] = "Procurement Officer Dashboard"
         elif user.groups.filter(name="Requisitioner").exists():
@@ -74,6 +97,7 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
             context["welcome_text"] = "User Dashboard"
 
         return context
+
 
 @login_required
 def requisitioner_dashboard(request):
@@ -105,17 +129,61 @@ class PRListView(LoginRequiredMixin, generic.ListView):
 
     def get_queryset(self):
         user = self.request.user
+        unassigned_q = (
+            Q(pr_number__isnull=True)
+            | Q(pr_number__exact="")
+            | Q(pr_number__iexact="Unassigned")
+        )
+        queryset = PurchaseRequest.objects.all()
 
-        # 🧩 Requisitioners can only see their own PRs
+        # 🔹 Base visibility rules
         if user.groups.filter(name="Requisitioner").exists():
-            return PurchaseRequest.objects.filter(created_by=user).order_by("-created_at")
+            queryset = queryset.filter(created_by=user).exclude(unassigned_q)
+        elif not user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return PurchaseRequest.objects.none()
 
-        # 🧩 Procurement & Admin can see everything
+        # 🔹 Filters from GET parameters
+        assigned_filter = self.request.GET.get("assigned")
+        office_filter = self.request.GET.get("office")
+        pr_number_search = self.request.GET.get("pr_number")
+
+        # 🧩 Procurement/Admin: Can use all filters
         if user.groups.filter(name__in=["Procurement", "Admin"]).exists():
-            return PurchaseRequest.objects.all().order_by("-created_at")
+            if assigned_filter == "unassigned":
+                queryset = queryset.filter(unassigned_q)
+            elif assigned_filter == "assigned":
+                queryset = queryset.exclude(unassigned_q)
 
-        # Default: empty queryset for other roles
-        return PurchaseRequest.objects.none()
+            if office_filter:
+                queryset = queryset.filter(office_section__icontains=office_filter)
+
+        # 🧩 All users: Can search by PR number
+        if pr_number_search:
+            queryset = queryset.filter(pr_number__icontains=pr_number_search)
+
+        return queryset.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        is_procurement = user.groups.filter(name__in=["Procurement", "Admin"]).exists()
+
+        # Preserve filter values
+        context["assigned_filter"] = self.request.GET.get("assigned", "")
+        context["office_filter"] = self.request.GET.get("office", "")
+        context["pr_number_search"] = self.request.GET.get("pr_number", "")
+        context["is_procurement"] = is_procurement
+
+        # 🧩 Show office list only for Procurement/Admin
+        if is_procurement:
+            context["offices"] = (
+                PurchaseRequest.objects.values_list("office_section", flat=True)
+                .distinct()
+                .order_by("office_section")
+            )
+
+        return context
+
 
 
 # -----------------------
@@ -513,16 +581,24 @@ class UnassignedPRListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         user = self.request.user
 
-        # Base filter for unassigned PRs
-        base_filter = Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
+        # Base filter for unassigned PRs (handles NULL, empty string, and 'Unassigned')
+        unassigned_q = Q(pr_number__isnull=True) | Q(pr_number__exact='') | Q(pr_number__iexact='Unassigned')
 
         # 🧩 Requisitioners → only their own unassigned PRs
         if user.groups.filter(name="Requisitioner").exists():
-            return PurchaseRequest.objects.filter(created_by=user).filter(base_filter).order_by('-created_at')
+            return (
+                PurchaseRequest.objects
+                .filter(unassigned_q, created_by=user)
+                .order_by('-created_at')
+            )
 
         # 🧩 Procurement/Admin → all unassigned PRs
         if user.groups.filter(name__in=["Procurement", "Admin"]).exists():
-            return PurchaseRequest.objects.filter(base_filter).order_by('-created_at')
+            return (
+                PurchaseRequest.objects
+                .filter(unassigned_q)
+                .order_by('-created_at')
+            )
 
         # 🧩 Default → none
         return PurchaseRequest.objects.none()
@@ -566,7 +642,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 # Helper to compute allowed statuses server-side (same mapping as JS)
 def _allowed_statuses_for_mode(mode):
     DEFAULT = ['draft','submitted','verified','endorsed','approved']
-    RFQ_FLOW = ['for_rfq','rfq_created','rfq_closed','for_aoq','aoq_approved','for_po','po_issued','delivered','inspected','closed']
+    RFQ_FLOW = ['for_mop','for_rfq','for_award','for_po','po_issued','delivered','inspected','closed']
     PB_FLOW = ['for_pb','pre_bid','bidding_open','bid_evaluation','post_qualification','bac_resolution','notice_of_award','contract_preparation','contract_signed','notice_to_proceed','delivery_completed','payment_processing','cancelled','failed_bidding','disqualified']
 
     RFQ_FLOW_MODES = set([
@@ -629,3 +705,105 @@ def update_status_ajax(request, pk):
         "success": True,
         "last_update": pr.last_update.strftime("%b %d, %Y %H:%M"),
     })
+
+# Reusable permission mixin
+class ProcurementOrAdminMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.groups.filter(name__in=["Procurement", "Admin"]).exists()
+
+# List
+class SignatoryListView(LoginRequiredMixin, ListView):
+    model = Signatory
+    template_name = "procurement/signatory_list.html"
+    context_object_name = "signatories"
+
+# Create (regular page)
+@method_decorator(login_required, name="dispatch")
+class SignatoryCreateView(ProcurementOrAdminMixin, CreateView):
+    model = Signatory
+    fields = ["name", "designation"]
+    template_name = "procurement/signatory_form.html"
+    success_url = reverse_lazy("procurement:signatory_list")
+
+# Update (regular page)
+@method_decorator(login_required, name="dispatch")
+class SignatoryUpdateView(ProcurementOrAdminMixin, UpdateView):
+    model = Signatory
+    fields = ["name", "designation"]
+    template_name = "procurement/signatory_form.html"
+    success_url = reverse_lazy("procurement:signatory_list")
+
+# Delete (regular page)
+@method_decorator(login_required, name="dispatch")
+class SignatoryDeleteView(ProcurementOrAdminMixin, DeleteView):
+    model = Signatory
+    template_name = "procurement/signatory_confirm_delete.html"
+    success_url = reverse_lazy("procurement:signatory_list")
+
+# ---------- AJAX Handlers ----------
+@login_required
+@require_POST
+def signatory_add_ajax(request):
+    # Accept form-encoded (POST) or JSON
+    try:
+        if request.content_type == "application/json":
+            data = json.loads(request.body.decode())
+            name = data.get("name", "").strip()
+            designation = data.get("designation", "").strip()
+        else:
+            name = request.POST.get("name", "").strip()
+            designation = request.POST.get("designation", "").strip()
+
+        if not name or not designation:
+            return JsonResponse({"success": False, "error": "Missing required fields"}, status=400)
+
+        if not request.user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return HttpResponseForbidden("Insufficient permissions")
+
+        s = Signatory.objects.create(name=name, designation=designation)
+        return JsonResponse({"success": True, "id": s.pk, "name": s.name, "designation": s.designation})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+@login_required
+@require_POST
+def signatory_edit_ajax(request, pk):
+    try:
+        if request.content_type == "application/json":
+            data = json.loads(request.body.decode())
+            name = data.get("name", "").strip()
+            designation = data.get("designation", "").strip()
+        else:
+            name = request.POST.get("name", "").strip()
+            designation = request.POST.get("designation", "").strip()
+
+        if not name or not designation:
+            return JsonResponse({"success": False, "error": "Missing required fields"}, status=400)
+
+        if not request.user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return HttpResponseForbidden("Insufficient permissions")
+
+        signatory = get_object_or_404(Signatory, pk=pk)
+        signatory.name = name
+        signatory.designation = designation
+        signatory.save()
+        return JsonResponse({"success": True})
+    except Signatory.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+@login_required
+@require_POST
+def signatory_delete_ajax(request, pk):
+    try:
+        if not request.user.groups.filter(name__in=["Procurement", "Admin"]).exists():
+            return HttpResponseForbidden("Insufficient permissions")
+
+        signatory = get_object_or_404(Signatory, pk=pk)
+        signatory.delete()
+        return JsonResponse({"success": True})
+    except Signatory.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
