@@ -20,13 +20,13 @@ from .models import Signatory
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
-    AbstractOfQuotation, AOQLine, PurchaseOrder
+    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine
 )
 from .forms import (
     RequisitionerPRForm, ProcurementStaffPRForm,
     PRItemFormSet, SupplierForm,
     RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm,
-    AssignPRNumberForm
+    AssignPRNumberForm, BidForm, BidLineForm
 )
 
 
@@ -807,3 +807,43 @@ def signatory_delete_ajax(request, pk):
         return JsonResponse({"success": False, "error": "Not found"}, status=404)
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+    
+
+@login_required
+@user_passes_test(in_procurement_group)
+def rfq_process(request, pk):
+    rfq = get_object_or_404(RequestForQuotation, pk=pk)
+    bids = rfq.bids.select_related("supplier").all()
+    return render(request, "procurement/rfq_process.html", {"rfq": rfq, "bids": bids})
+
+
+@login_required
+@user_passes_test(in_procurement_group)
+def add_bid(request, rfq_id):
+    rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
+    if request.method == "POST":
+        form = BidForm(request.POST)
+        if form.is_valid():
+            bid = form.save(commit=False)
+            bid.rfq = rfq
+            bid.save()
+            messages.success(request, "Bidder added successfully.")
+            return redirect("procurement:rfq_process", pk=rfq.pk)
+    else:
+        form = BidForm()
+    return render(request, "procurement/add_bid.html", {"form": form, "rfq": rfq})
+
+
+@login_required
+@user_passes_test(in_procurement_group)
+def enter_bid_lines(request, bid_id):
+    bid = get_object_or_404(Bid, pk=bid_id)
+    if request.method == "POST":
+        formset = BidLineFormSet(request.POST, instance=bid)
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, "Bid lines saved successfully.")
+            return redirect("procurement:rfq_process", pk=bid.rfq.pk)
+    else:
+        formset = BidLineFormSet(instance=bid)
+    return render(request, "procurement/enter_bid_lines.html", {"bid": bid, "formset": formset})

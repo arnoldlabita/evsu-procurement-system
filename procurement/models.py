@@ -244,6 +244,37 @@ class RequestForQuotation(TimestampedModel):
     def __str__(self):
         return self.rfq_number or f"RFQ for {self.purchase_request}"
 
+class Bid(models.Model):
+    rfq = models.ForeignKey(RequestForQuotation, related_name="bids", on_delete=models.CASCADE)
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=[("submitted", "Submitted"), ("withdrawn", "Withdrawn"), ("awarded", "Awarded")],
+        default="submitted"
+    )
+    remarks = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def total_bid_amount(self):
+        return sum(line.total_cost() for line in self.lines.all())
+
+    def __str__(self):
+        return f"Bid from {self.supplier} for {self.rfq}"
+
+
+class BidLine(models.Model):
+    bid = models.ForeignKey(Bid, related_name="lines", on_delete=models.CASCADE)
+    pr_item = models.ForeignKey(PRItem, on_delete=models.CASCADE)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    compliant = models.BooleanField(default=True)
+
+    def total_cost(self):
+        return self.pr_item.quantity * self.unit_price
+
+    def __str__(self):
+        return f"{self.pr_item} - {self.unit_price}"
+
+
 class AgencyProcurementRequest(TimestampedModel):
     apr_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     purchase_request = models.OneToOneField(PurchaseRequest, related_name="apr", on_delete=models.CASCADE)

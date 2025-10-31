@@ -9,6 +9,8 @@ from .models import (
     AOQLine,
     PurchaseOrder,
     Signatory,
+    Bid,
+    BidLine
 )
 
 
@@ -50,13 +52,38 @@ class PurchaseRequestAdmin(admin.ModelAdmin):
 
 # ✅ Register other models normally
 admin.site.register(Supplier)
-admin.site.register(RequestForQuotation)
 admin.site.register(AgencyProcurementRequest)
 admin.site.register(AbstractOfQuotation)
 admin.site.register(AOQLine)
 admin.site.register(PurchaseOrder)
 
+
+class BidLineInline(admin.TabularInline):
+    model = BidLine
+    extra = 0
+
+@admin.register(Bid)
+class BidAdmin(admin.ModelAdmin):
+    list_display = ("rfq", "supplier", "status", "total_bid_amount", "created_at")
+    list_filter = ("status", "rfq")
+    search_fields = ("rfq__rfq_number", "supplier__name")
+    inlines = [BidLineInline]
+
+class RFQBidInline(admin.TabularInline):
+    model = Bid
+    extra = 0
+
+@admin.register(RequestForQuotation)
+class RFQAdmin(admin.ModelAdmin):
+    list_display = ("rfq_number", "purchase_request", "date", "created_by")
+    list_filter = ("date",)
+    search_fields = ("rfq_number", "purchase_request__pr_number")
+    inlines = [RFQBidInline]
+
+
 @admin.register(Signatory)
 class SignatoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'designation', 'created_at')
     search_fields = ('name', 'designation')
+
+

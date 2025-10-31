@@ -7,61 +7,128 @@
     <title>EVSU Procurement</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{% static 'procurement/style.css' %}" rel="stylesheet">
+
+    <style>
+      /* ✅ Uniform Navbar Design — No functional changes */
+      .navbar-nav .nav-link {
+        color: #ffffff !important;
+        font-weight: 500;
+        padding: 0.6rem 1rem;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+
+      .navbar-nav .nav-link:hover,
+      .navbar-nav .nav-link:focus,
+      .navbar-nav .nav-item.show .nav-link {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: #fff !important;
+        border-radius: 0.375rem;
+      }
+
+      .navbar .dropdown-menu {
+        border-radius: 0.375rem;
+        border: 1px solid #800000;
+        background-color: #fff;
+        padding: 0.5rem 0;
+      }
+
+      .navbar .dropdown-item {
+        font-weight: 500;
+        color: #333;
+        padding: 0.5rem 1rem;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+
+      .navbar .dropdown-item:hover {
+        background-color: #800000;
+        color: #fff;
+      }
+
+      .navbar-brand {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+
+      .maroon-bg {
+        background-color: #800000 !important;
+      }
+
+      .btn-outline-light {
+        border: 1px solid #fff;
+        color: #fff;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+
+      .btn-outline-light:hover {
+        background-color: #fff;
+        color: #800000;
+      }
+    </style>
   </head>
+
   <body>
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark maroon-bg">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'procurement:dashboard' %}">EVSU Procurement</a>
 
-  <!-- NAVBAR -->
-  <nav class="navbar navbar-expand-lg navbar-dark maroon-bg">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="{% url 'procurement:dashboard' %}">EVSU Procurement</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'procurement:pr_list' %}">Purchase Requests</a>
+            </li>
 
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'procurement:pr_list' %}">Purchase Requests</a>
-          </li>
+            {% if user.is_authenticated and user.groups.all.0.name in "Procurement Admin" %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle text-white fw-semibold" href="#" id="procurementDropdown"
+                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Procurement Workflow
+              </a>
+              <ul class="dropdown-menu shadow-sm" aria-labelledby="procurementDropdown">
+                <li><a class="dropdown-item" href="{% url 'procurement:rfq_list' %}">Requests for Quotation (RFQ)</a></li>
+                <li><a class="dropdown-item" href="{% url 'procurement:aoq_list' %}">Abstracts of Quotation (AOQ)</a></li>
+                <li><a class="dropdown-item" href="{% url 'procurement:po_list' %}">Purchase Orders (PO)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'procurement:supplier_list' %}">Suppliers Management</a></li>
+              </ul>
+            </li>
+            {% endif %}
 
-          {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'procurement:signatory_list' %}">Signatories</a>
-          </li>
+            {% if user|has_group:"Procurement" or user|has_group:"Admin" %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'procurement:signatory_list' %}">Signatories</a>
+            </li>
+            {% endif %}
+          </ul>
+
+          {% if user.is_authenticated %}
+          <ul class="navbar-nav ms-auto align-items-center">
+            <li class="nav-item">
+              <span class="nav-link">👤 {{ user.get_full_name|default:user.username }}</span>
+            </li>
+
+            <!-- ✅ Secure logout form -->
+            <li class="nav-item">
+              <form method="post" action="{% url 'logout' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-light ms-2">Logout</button>
+              </form>
+            </li>
+          </ul>
           {% endif %}
-
-          {% if user|has_group:"Procurement" %}
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'procurement:supplier_list' %}">Suppliers</a>
-          </li>
-          {% endif %}
-        </ul>
-
-        {% if user.is_authenticated %}
-        <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item">
-            <span class="nav-link">👤 {{ user.get_full_name|default:user.username }}</span>
-          </li>
-
-          <!-- ✅ Secure logout form -->
-          <li class="nav-item">
-            <form method="post" action="{% url 'logout' %}" class="d-inline">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-outline-light ms-2">Logout</button>
-            </form>
-          </li>
-        </ul>
-        {% endif %}
+        </div>
       </div>
-    </div>
-  </nav>
+    </nav>
 
-  <!-- MAIN CONTENT -->
-  <main class="container my-4">
-    {% block content %}{% endblock %}
-  </main>
+    <!-- MAIN CONTENT -->
+    <main class="container my-4">
+      {% block content %}{% endblock %}
+    </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

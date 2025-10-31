@@ -1,0 +1,15 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h4 class="fw-bold text-maroon">Add Bidder for RFQ — {{ rfq.purchase_request.pr_number }}</h4>
+
+  <form method="post" class="mt-3">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="mt-3">
+      <button type="submit" class="btn btn-maroon">Save Bidder</button>
+      <a href="{% url 'procurement:rfq_process' rfq.id %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

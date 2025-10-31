@@ -1,0 +1,38 @@
+{% extends "procurement/base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="container mt-4">
+  <h4 class="fw-bold text-maroon">RFQ Processing — {{ rfq.purchase_request.pr_number }}</h4>
+  <p>Date Created: {{ rfq.date|date:"F d, Y" }}</p>
+
+  <a href="{% url 'procurement:add_bid' rfq.id %}" class="btn btn-maroon mb-3">
+    <i class="bi bi-plus-circle"></i> Add Bidder
+  </a>
+
+  <table class="table table-bordered align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Supplier</th>
+        <th>Status</th>
+        <th>Total Bid Amount</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bid in bids %}
+      <tr>
+        <td>{{ bid.supplier.name }}</td>
+        <td>{{ bid.get_status_display }}</td>
+        <td>₱{{ bid.total_bid_amount|floatformat:2|intcomma }}</td>
+        <td>
+          <a href="{% url 'procurement:enter_bid_lines' bid.id %}" class="btn btn-sm btn-outline-maroon">Enter Bids</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-center text-muted">No bidders added yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

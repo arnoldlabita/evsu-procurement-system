@@ -1,10 +1,10 @@
 from django import forms
-from django.forms import inlineformset_factory
 from django.core.exceptions import ValidationError
+from django.forms import inlineformset_factory
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
-    AbstractOfQuotation, AOQLine, PurchaseOrder
+    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine
 )
 
 # -------------------------
@@ -145,6 +145,32 @@ class RFQForm(forms.ModelForm):
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+
+class BidForm(forms.ModelForm):
+    class Meta:
+        model = Bid
+        fields = ["supplier", "status", "remarks"]
+        widgets = {
+            "supplier": forms.Select(attrs={"class": "form-select"}),
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+        }
+
+
+class BidLineForm(forms.ModelForm):
+    class Meta:
+        model = BidLine
+        fields = ["pr_item", "unit_price", "compliant"]
+        widgets = {
+            "pr_item": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "unit_price": forms.NumberInput(attrs={"class": "form-control form-control-sm"}),
+            "compliant": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+BidLineFormSet = inlineformset_factory(
+    Bid, BidLine, form=BidLineForm, extra=1, can_delete=True
+)
 
 
 # -------------------------

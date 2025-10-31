@@ -61,6 +61,10 @@ urlpatterns = [
     path("rfqs/", RFQListView.as_view(), name="rfq_list"),
     path("rfqs/<int:pk>/preview/", RFQPreviewView.as_view(), name="rfq_preview"),
     path("prs/<int:pr_id>/create_rfq/", create_rfq, name="create_rfq"),
+    # urls.py
+    path("rfqs/<int:pk>/process/", views.rfq_process, name="rfq_process"),
+    path("rfqs/<int:rfq_id>/add_bid/", views.add_bid, name="add_bid"),
+    path("bids/<int:bid_id>/enter_lines/", views.enter_bid_lines, name="enter_bid_lines"),
 
     # ----------------------------
     # Agency Procurement Requests (APR)
