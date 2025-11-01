@@ -1,0 +1,10 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+  <h4>Edit Bid — {{ bid.supplier.name }}</h4>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-maroon" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% url 'procurement:rfq_process' rfq.id %}">Cancel</a>
+  </form>
+{% endblock %}

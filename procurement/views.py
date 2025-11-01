@@ -16,6 +16,11 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from .models import Signatory
+import csv
+from django.http import HttpResponse
+from .utils import award_aoq_and_create_po
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
@@ -26,7 +31,7 @@ from .forms import (
     RequisitionerPRForm, ProcurementStaffPRForm,
     PRItemFormSet, SupplierForm,
     RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm,
-    AssignPRNumberForm, BidForm, BidLineForm
+    AssignPRNumberForm, BidForm, BidLineForm, BidLineFormSet
 )
 
 
@@ -42,8 +47,6 @@ def in_requisitioner_group(user):
 # -----------------------
 # DASHBOARD
 # -----------------------
-from django.db.models import Q
-
 class DashboardView(LoginRequiredMixin, generic.TemplateView):
     template_name = "procurement/dashboard.html"
 
@@ -366,6 +369,39 @@ class AOQDetailView(LoginRequiredMixin, generic.DetailView):
     template_name = "procurement/aoq_detail.html"
     context_object_name = "aoq"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        aoq = self.object  # ✅ FIX — get the AOQ instance
+        pr = aoq.rfq.purchase_request
+
+        # Supplier summaries
+        context["supplier_summary"] = aoq.supplier_summary()
+
+        # Winner + savings
+        winner, winning_total, pr_total, savings, pct = aoq.winning_supplier_and_savings()
+        context.update({
+            "winner_supplier": winner,
+            "winning_total": winning_total,
+            "pr_total": pr_total,
+            "savings": savings,
+            "pct_savings": pct,
+        })
+
+        # PR breakdown by category
+        context["pr_breakdown"] = pr.breakdown_by_budget()
+
+        # AOQ breakdown by category (safe)
+        def category_breakdown(aoq_obj):
+            breakdown = {}
+            for line in aoq_obj.lines.select_related("pr_item"):
+                category = line.pr_item.budget_category
+                total = (line.unit_price or 0) * (line.pr_item.quantity or 0)
+                breakdown[category] = breakdown.get(category, 0) + total
+            return breakdown
+
+        context["aoq_breakdown_by_category"] = category_breakdown(aoq)  # ✅ aoq now defined
+
+        return context
 
 class AOQListView(LoginRequiredMixin, generic.ListView):
     model = AbstractOfQuotation
@@ -604,10 +640,6 @@ class UnassignedPRListView(LoginRequiredMixin, ListView):
         return PurchaseRequest.objects.none()
 
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
-
 @login_required
 @user_passes_test(in_procurement_group)
 @csrf_exempt
@@ -634,10 +666,6 @@ def update_mode_ajax(request, pk):
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
-from django.contrib.auth.decorators import login_required, user_passes_test
 
 # Helper to compute allowed statuses server-side (same mapping as JS)
 def _allowed_statuses_for_mode(mode):
@@ -808,10 +836,12 @@ def signatory_delete_ajax(request, pk):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
     
-
 @login_required
 @user_passes_test(in_procurement_group)
 def rfq_process(request, pk):
+    """
+    RFQ overview page: shows RFQ details and list of bidders.
+    """
     rfq = get_object_or_404(RequestForQuotation, pk=pk)
     bids = rfq.bids.select_related("supplier").all()
     return render(request, "procurement/rfq_process.html", {"rfq": rfq, "bids": bids})
@@ -822,28 +852,263 @@ def rfq_process(request, pk):
 def add_bid(request, rfq_id):
     rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
     if request.method == "POST":
-        form = BidForm(request.POST)
+        form = BidForm(request.POST, rfq=rfq)
         if form.is_valid():
             bid = form.save(commit=False)
             bid.rfq = rfq
+            bid.created_by = request.user
             bid.save()
             messages.success(request, "Bidder added successfully.")
             return redirect("procurement:rfq_process", pk=rfq.pk)
     else:
-        form = BidForm()
+        form = BidForm(rfq=rfq)
     return render(request, "procurement/add_bid.html", {"form": form, "rfq": rfq})
 
 
 @login_required
 @user_passes_test(in_procurement_group)
-def enter_bid_lines(request, bid_id):
+def edit_bid(request, bid_id):
     bid = get_object_or_404(Bid, pk=bid_id)
+    rfq = bid.rfq
+    if request.method == "POST":
+        form = BidForm(request.POST, instance=bid, rfq=rfq)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Bid updated successfully.")
+            return redirect("procurement:rfq_process", pk=rfq.pk)
+    else:
+        form = BidForm(instance=bid, rfq=rfq)
+    return render(request, "procurement/edit_bid.html", {"form": form, "bid": bid, "rfq": rfq})
+
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def remove_bid(request, bid_id):
+    bid = get_object_or_404(Bid, pk=bid_id)
+    rfq_pk = bid.rfq.pk
+    bid.delete()
+    messages.success(request, "Bidder removed.")
+    return redirect("procurement:rfq_process", pk=rfq_pk)
+
+
+@login_required
+@user_passes_test(in_procurement_group)
+def enter_bid_lines(request, bid_id):
+    """
+    Enter per-item prices for a Bid. Enforces that all PRItems in the RFQ's PR
+    have a corresponding BidLine (i.e., completeness) before final save.
+    """
+    bid = get_object_or_404(Bid, pk=bid_id)
+    rfq = bid.rfq
+    pr = rfq.purchase_request
+    pr_items = list(pr.items.all())
+
     if request.method == "POST":
         formset = BidLineFormSet(request.POST, instance=bid)
+
         if formset.is_valid():
-            formset.save()
-            messages.success(request, "Bid lines saved successfully.")
-            return redirect("procurement:rfq_process", pk=bid.rfq.pk)
+            # Save in memory (not committed yet) so we can validate completeness
+            lines = formset.save(commit=False)
+
+            # Build set of PRItem IDs provided in the formset (including existing ones)
+            provided_pr_item_ids = set()
+            for line in lines:
+                if line.pr_item_id:
+                    provided_pr_item_ids.add(line.pr_item_id)
+
+            # Also include the formset's deleted/unchanged existing lines (if not deleted)
+            # Note: formset.deleted_forms list contains forms marked for deletion.
+            existing_lines_qs = BidLine.objects.filter(bid=bid)
+            for existing in existing_lines_qs:
+                # Check whether this existing line was removed in formset:
+                # If the existing.pk is in any form.cleaned_data pk marked for delete, skip
+                # We will rely on provided_pr_item_ids + final save to reflect final state.
+                provided_pr_item_ids.add(existing.pr_item_id)
+
+            # Determine which PRItems are missing
+            missing = [itm for itm in pr_items if itm.pk not in provided_pr_item_ids]
+
+            if missing:
+                # Formset is valid but incomplete: refuse to accept and display message
+                names = ", ".join([str(m.description) for m in missing])
+                messages.error(request,
+                    "Bid lines are incomplete. Please provide prices for all PR items: "
+                    f"{names}"
+                )
+                # Re-render formset (without saving any changes)
+                return render(request, "procurement/enter_bid_lines.html", {
+                    "bid": bid, "formset": formset, "rfq": rfq, "pr_items": pr_items
+                })
+
+            # Everything is present — save changes
+            # Delete objects marked for deletion
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            # Save/attach new or changed lines
+            for line in lines:
+                line.bid = bid
+                line.save()
+
+            # Optionally update bid status to 'submitted' (if you use that)
+            if bid.status != "submitted":
+                bid.status = "submitted"
+                bid.save(update_fields=['status'])
+
+            messages.success(request, "Bid lines saved successfully and are complete.")
+            return redirect("procurement:rfq_process", pk=rfq.pk)
+
+        # invalid formset
+        messages.error(request, "Please correct the errors in the form.")
+        return render(request, "procurement/enter_bid_lines.html", {
+            "bid": bid, "formset": formset, "rfq": rfq, "pr_items": pr_items
+        })
+
     else:
+        # GET: Pre-populate missing BidLine entries so user sees all PR items
         formset = BidLineFormSet(instance=bid)
-    return render(request, "procurement/enter_bid_lines.html", {"bid": bid, "formset": formset})
+        # If there are zero bidlines, create initial ones for each PR item (client-friendly)
+        if not bid.lines.exists():
+            initial = []
+            for itm in pr_items:
+                initial.append({"pr_item": itm.pk, "unit_price": "", "compliant": True})
+            formset = BidLineFormSet(instance=bid, initial=initial)
+
+        return render(request, "procurement/enter_bid_lines.html", {
+            "bid": bid, "formset": formset, "rfq": rfq, "pr_items": pr_items
+        })
+
+@login_required
+@user_passes_test(in_procurement_group)
+def create_aoq_from_rfq(request, rfq_id):
+    rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
+    aoq, created = AbstractOfQuotation.objects.get_or_create(rfq=rfq)
+    if created:
+        messages.success(request, "AOQ created.")
+    else:
+        messages.info(request, "AOQ already exists.")
+    return redirect("procurement:aoq_detail", pk=aoq.pk)
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def award_aoq(request, aoq_id):
+    aoq = get_object_or_404(AbstractOfQuotation, pk=aoq_id)
+    supplier_id = request.POST.get('supplier_id')
+    if not supplier_id:
+        messages.error(request, "Supplier selection required.")
+        return redirect("procurement:aoq_detail", pk=aoq.pk)
+
+    try:
+        po = aoq.award(supplier_id, awarded_by=request.user)
+        messages.success(request, f"Awarded and PO {po.po_number} created.")
+        return redirect("procurement:po_detail", pk=po.pk)
+    except Exception as e:
+        messages.error(request, f"Award failed: {str(e)}")
+        return redirect("procurement:aoq_detail", pk=aoq.pk)
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def advance_pr_stage(request, pr_id):
+    pr = get_object_or_404(PurchaseRequest, pk=pr_id)
+    action = request.POST.get('action')
+    transitions = {
+        "to_rfq": "for_rfq",
+        "to_award": "for_award",
+        "to_po": "for_po",
+    }
+
+    if action not in transitions:
+        messages.error(request, "Unknown transition.")
+        return redirect("procurement:pr_detail", pk=pr.pk)
+
+    new_status = transitions[action]
+
+    # server-side prereq validation happens in step 7
+    ok, err = validate_pr_transition(pr, new_status)
+    if not ok:
+        messages.error(request, f"Cannot transition: {err}")
+        return redirect("procurement:pr_detail", pk=pr.pk)
+
+    pr.status = new_status
+    pr.last_update = timezone.now()
+    pr.save(update_fields=["status", "last_update"])
+    messages.success(request, f"PR moved to {pr.get_status_display()}.")
+    return redirect("procurement:pr_detail", pk=pr.pk)
+
+def validate_pr_transition(pr, new_status):
+    """
+    Returns (True, None) if allowed, else (False, "reason string").
+    """
+    # move to RFQ: PR must have items and pr_number assigned
+    if new_status == "for_rfq":
+        if pr.items.count() == 0:
+            return False, "PR has no items."
+        if not pr.pr_number:
+            return False, "PR number must be assigned first."
+        return True, None
+
+    # move to AWARD: AOQ should exist and contain responsive lines
+    if new_status == "for_award":
+        rfq = getattr(pr, "rfq", None)
+        if not rfq:
+            return False, "RFQ not created for this PR."
+        aoq = getattr(rfq, "aoq", None)
+        if not aoq:
+            return False, "AOQ must be created before moving to award."
+        # ensure at least one responsive line exists
+        if not aoq.lines.filter(responsive=True).exists():
+            return False, "No responsive AOQ lines found."
+        return True, None
+
+    # move to PO: AOQ must be awarded (awarded_to set)
+    if new_status == "for_po":
+        rfq = getattr(pr, "rfq", None)
+        aoq = getattr(rfq, "aoq", None) if rfq else None
+        if not aoq or not getattr(aoq, "awarded_to", None):
+            return False, "AOQ must be awarded before creating PO."
+        return True, None
+
+    return True, None
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def award_aoq_view(request, aoq_id):
+    aoq = get_object_or_404(AbstractOfQuotation, pk=aoq_id)
+    supplier_id = request.POST.get("supplier_id")
+    try:
+        po = award_aoq_and_create_po(aoq, supplier_id, awarded_by=request.user)
+        messages.success(request, f"Awarded. PO {po.po_number} created.")
+        return redirect("procurement:po_detail", pk=po.pk)
+    except Exception as e:
+        messages.error(request, f"Award failed: {e}")
+        return redirect("procurement:aoq_detail", pk=aoq.pk)
+    
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def save_resolution(request, rfq_id):
+    rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
+    resolution_text = request.POST.get("resolution", "").strip()
+    rfq.resolution = resolution_text
+    rfq.resolution_by = request.user
+    rfq.resolution_at = timezone.now()
+    rfq.save(update_fields=["resolution","resolution_by","resolution_at"])
+    messages.success(request, "Resolution saved.")
+    return redirect("procurement:rfq_process", pk=rfq.pk)
+
+@login_required
+@user_passes_test(in_procurement_group)
+def aoq_export_csv(request, aoq_id):
+    aoq = get_object_or_404(AbstractOfQuotation, pk=aoq_id)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="aoq_{aoq.pk}_summary.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["Supplier", "Total", "Responsive Lines"])
+    for s in aoq.supplier_summary():
+        writer.writerow([s['supplier'].name, f"{s['total']:.2f}", s['responsive_count']])
+    return response

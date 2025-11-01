@@ -1,0 +1,10 @@
+<div>
+  <h5>Resolution / Internal Notes</h5>
+  <form method="post" action="{% url 'procurement:save_resolution' rfq.pk %}">
+    {% csrf_token %}
+    <div class="mb-2">
+      <textarea name="resolution" class="form-control" rows="4">{{ rfq.resolution|default:"" }}</textarea>
+    </div>
+    <button class="btn btn-maroon">Save Resolution</button>
+  </form>
+</div>

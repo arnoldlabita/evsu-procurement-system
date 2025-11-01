@@ -53,9 +53,7 @@ class PurchaseRequestAdmin(admin.ModelAdmin):
 # ✅ Register other models normally
 admin.site.register(Supplier)
 admin.site.register(AgencyProcurementRequest)
-admin.site.register(AbstractOfQuotation)
 admin.site.register(AOQLine)
-admin.site.register(PurchaseOrder)
 
 
 class BidLineInline(admin.TabularInline):
@@ -85,5 +83,16 @@ class RFQAdmin(admin.ModelAdmin):
 class SignatoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'designation', 'created_at')
     search_fields = ('name', 'designation')
+
+@admin.register(AbstractOfQuotation)
+class AOQAdmin(admin.ModelAdmin):
+    list_display = ("aoq_number", "rfq", "awarded_to", "awarded_at", "verified")
+    search_fields = ("aoq_number", "rfq__rfq_number", "awarded_to__name")
+    readonly_fields = ("awarded_at","awarded_by")
+
+@admin.register(PurchaseOrder)
+class POAdmin(admin.ModelAdmin):
+    list_display = ("po_number", "supplier", "created_at", "submission_date")
+    search_fields = ("po_number","supplier__name")
 
 

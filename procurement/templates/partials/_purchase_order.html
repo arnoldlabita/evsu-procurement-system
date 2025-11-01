@@ -1,0 +1,9 @@
+<div>
+  {% if aoq.awarded_to %}
+  <h5>Purchase Order</h5>
+  <p>Awarded to: {{ aoq.awarded_to.name }}</p>
+  <a class="btn btn-maroon" href="{% url 'procurement:aoq_generate_po' aoq.pk %}">Generate PO</a>
+  {% else %}
+  <p class="text-muted">Not awarded yet.</p>
+  {% endif %}
+</div>

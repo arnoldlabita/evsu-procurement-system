@@ -1,0 +1,15 @@
+<div class="d-flex gap-2 mt-3">
+  <form method="post" action="{% url 'procurement:advance_pr_stage' rfq.purchase_request.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="to_award">
+    <button type="submit" class="btn btn-maroon">Move to Award</button>
+  </form>
+
+  <form method="post" action="{% url 'procurement:advance_pr_stage' rfq.purchase_request.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="to_po">
+    <button type="submit" class="btn btn-outline-maroon">Move to PO</button>
+  </form>
+
+  <a class="btn btn-outline-secondary" href="{% url 'procurement:rfq_process' rfq.pk %}">Back</a>
+</div>

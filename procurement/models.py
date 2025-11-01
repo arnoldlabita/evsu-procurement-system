@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.urls import reverse
+from django.db import transaction
 from django.utils import timezone
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -168,23 +170,6 @@ class PurchaseRequest(models.Model):
     def __str__(self):
         return f"PR-{self.pr_number or self.id}"
 
-    # ✅ FIXED: properly indented method inside the class
-    def update_status_from_notes(self):
-        """
-        Automatically updates the status based on staff notes.
-        """
-        note = (self.notes or "").lower()
-
-        if "po sent" in note:
-            self.status = "pending_supplier"
-        elif "goods received" in note or "completed" in note:
-            self.status = "completed"
-        elif "verified" in note:
-            self.status = "verified"
-        else:
-            # Keep current status if note doesn’t match anything
-            self.status = self.status or "draft"
-
     def assign_pr_number(self):
         if not self.pr_number:
             self.pr_number = f"PR-{timezone.now().strftime('%Y%m%d')}-{self.id}"
@@ -195,6 +180,16 @@ class PurchaseRequest(models.Model):
 
     def total_amount(self):
         return sum(item.total_cost() for item in self.items.all())
+    
+    def breakdown_by_budget(self):
+        """
+        Returns dict: { 'PS': Decimal(...), 'MOOE': Decimal(...), ... }
+        """
+        from collections import defaultdict
+        totals = defaultdict(lambda: 0)
+        for item in self.items.all():
+            totals[item.budget_category] += (item.quantity or 0) * (item.unit_cost or 0)
+        return dict(totals)
 
 
 class PRItem(models.Model):
@@ -220,6 +215,13 @@ class PRItem(models.Model):
         ("year", "Year"), ("others", "Others (Specify)"),
     ]
 
+    BUDGET_CATEGORIES = [
+    ("PS", "Personal Services"),
+    ("MOOE", "Maintenance & Other Operating Expenses"),
+    ("CO", "Capital Outlay"),
+    ("OTHER", "Other"),
+    ]
+
     purchase_request = models.ForeignKey(
         "PurchaseRequest", on_delete=models.CASCADE, related_name="items"
     )
@@ -228,7 +230,8 @@ class PRItem(models.Model):
     quantity = models.PositiveIntegerField()
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES)
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)  # ✅ renamed field
-    
+    budget_category = models.CharField(max_length=20, choices=BUDGET_CATEGORIES, default="MOOE")
+
     def total_cost(self):
         return self.quantity * self.unit_cost
 
@@ -239,40 +242,78 @@ class RequestForQuotation(TimestampedModel):
     rfq_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     purchase_request = models.OneToOneField(PurchaseRequest, related_name="rfq", on_delete=models.CASCADE)
     date = models.DateField(default=timezone.now)
+    resolution = models.TextField(blank=True, null=True)
+    resolution_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="rfq_resolutions_by")
+    resolution_at = models.DateTimeField(null=True, blank=True)
     # other fields as required
 
     def __str__(self):
         return self.rfq_number or f"RFQ for {self.purchase_request}"
 
+# --- Bid models for RFQ processing ---
 class Bid(models.Model):
-    rfq = models.ForeignKey(RequestForQuotation, related_name="bids", on_delete=models.CASCADE)
-    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=20,
-        choices=[("submitted", "Submitted"), ("withdrawn", "Withdrawn"), ("awarded", "Awarded")],
-        default="submitted"
-    )
-    remarks = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    STATUS_CHOICES = [
+        ("submitted", "Submitted"),
+        ("withdrawn", "Withdrawn"),
+        ("awarded", "Awarded"),
+    ]
 
-    def total_bid_amount(self):
-        return sum(line.total_cost() for line in self.lines.all())
+    rfq = models.ForeignKey(
+        "RequestForQuotation", related_name="bids", on_delete=models.CASCADE
+    )
+    supplier = models.ForeignKey("Supplier", on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="submitted")
+    remarks = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="bids_created")
+
+    class Meta:
+        unique_together = ("rfq", "supplier")
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Bid from {self.supplier} for {self.rfq}"
+        return f"Bid: {self.supplier} on {self.rfq}"
 
+    def total_bid_amount(self):
+        # Sum over related BidLine if present
+        return sum((line.total_cost() or 0) for line in self.lines.all())
+    
+    def completeness_status(self):
+        """Return True if bid has lines for every PRItem in the RFQ's PR."""
+        pr_items = list(self.rfq.purchase_request.items.values_list('pk', flat=True))
+        bid_item_ids = list(self.lines.values_list('pr_item__pk', flat=True))
+        return set(pr_items) <= set(bid_item_ids)
+
+    def responsive_status(self):
+        """Return True if all lines marked responsive/compliant and have valid prices."""
+        if not self.completeness_status():
+            return False
+        for line in self.lines.all():
+            if not line.responsive if hasattr(line, 'responsive') else line.compliant:
+                return False
+            if not line.is_valid_price():
+                return False
+        return True
 
 class BidLine(models.Model):
-    bid = models.ForeignKey(Bid, related_name="lines", on_delete=models.CASCADE)
-    pr_item = models.ForeignKey(PRItem, on_delete=models.CASCADE)
+    bid = models.ForeignKey("Bid", related_name="lines", on_delete=models.CASCADE)
+    pr_item = models.ForeignKey("PRItem", on_delete=models.CASCADE)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     compliant = models.BooleanField(default=True)
 
     def total_cost(self):
-        return self.pr_item.quantity * self.unit_price
+        return (self.pr_item.quantity or 0) * (self.unit_price or 0)
 
     def __str__(self):
-        return f"{self.pr_item} - {self.unit_price}"
+        return f"{self.pr_item} — {self.unit_price}"
+    
+    def is_valid_price(self):
+        # optional business rule: price > 0
+        try:
+            return (self.unit_price is not None) and (self.unit_price > 0)
+        except:
+            return False
 
 
 class AgencyProcurementRequest(TimestampedModel):
@@ -288,9 +329,118 @@ class AbstractOfQuotation(TimestampedModel):
     aoq_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     rfq = models.OneToOneField(RequestForQuotation, related_name="aoq", on_delete=models.CASCADE)
     verified = models.BooleanField(default=False)
+    awarded_to = models.ForeignKey(
+    Supplier, null=True, blank=True, on_delete=models.SET_NULL, related_name="awarded_aoqs"
+    )
+    awarded_at = models.DateTimeField(null=True, blank=True)
+    awarded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="aoqs_awarded_by")
+    computed_summary = models.JSONField(blank=True, null=True)  # Django 3.1+; else use TextField
 
     def __str__(self):
         return self.aoq_number or f"AOQ for {self.rfq}"
+    
+    def compute_lcrb(self):
+        """
+        Compute Lowest Compliant Responsive Bid (LCRB) per PRItem.
+        Returns dict: { pr_item.pk: BidLine (winning line) }
+        """
+        winners = {}
+        for pr_item in self.rfq.purchase_request.items.all():
+            # filter responsive lines for this item
+            responsive_lines = self.rfq.aoq.lines.filter(pr_item=pr_item, responsive=True).order_by("unit_price")
+            if responsive_lines.exists():
+                winners[pr_item.pk] = responsive_lines.first()
+        return winners
+
+    def summarize(self):
+        """
+        Summarize total per supplier and grand totals. Returns dict summary.
+        """
+        summary = {}
+        for line in self.lines.select_related('supplier','pr_item'):
+            sup = line.supplier
+            summary.setdefault(sup.pk, {"supplier": sup, "total": 0, "lines": []})
+            line_total = (line.unit_price or 0) * (line.pr_item.quantity or 0)
+            summary[sup.pk]["total"] += line_total
+            summary[sup.pk]["lines"].append(line)
+        return summary
+
+    @transaction.atomic
+    def award(self, supplier_id, awarded_by=None):
+        """
+        Mark AOQ as awarded to supplier_id and create PurchaseOrder(s).
+        Atomic: either award + PO creation succeed or roll back.
+        """
+        # Basic validation
+        aoq = self
+        supplier = Supplier.objects.get(pk=supplier_id)  # may raise
+        # optional: ensure supplier present in AOQ lines
+        if not aoq.lines.filter(supplier=supplier, responsive=True).exists():
+            raise ValidationError("Supplier has no responsive lines in AOQ.")
+
+        # create PO - you may choose to create one PO per supplier or one consolidated PO
+        po = PurchaseOrder.objects.create(
+            aoq=aoq,
+            supplier=supplier,
+            created_by=awarded_by,
+            submission_date=timezone.now().date(),
+            receiving_office="To be set"
+        )
+        po.po_number = f"PO-{timezone.now().strftime('%Y%m%d')}-{po.id}"
+        po.save()
+
+        # mark AOQ as awarded
+        aoq.awarded_to = supplier  # add field? if not present, set notes/status.
+        aoq.save(update_fields=['awarded_to'])
+
+        # update related PR status (optional)
+        pr = aoq.rfq.purchase_request
+        pr.status = "po_issued"
+        pr.last_update = timezone.now()
+        pr.save(update_fields=['status','last_update'])
+
+        return po
+    
+    def supplier_summary(self):
+        """
+        Returns a list of dicts: [{supplier, total, responsive_count, lines}, ...]
+        ```
+        """
+        summary = {}
+        for line in self.lines.select_related("supplier", "pr_item"):
+            sup = line.supplier
+            line_total = (line.unit_price or 0) * (line.pr_item.quantity or 0)
+            if sup.pk not in summary:
+                summary[sup.pk] = {"supplier": sup, "total": 0, "lines": [], "responsive_count": 0}
+            summary[sup.pk]["total"] += line_total
+            summary[sup.pk]["lines"].append(line)
+            if getattr(line, "responsive", True) or getattr(line, "compliant", True):
+                summary[sup.pk]["responsive_count"] += 1
+        # return sorted by total ascending (lowest bid first)
+        result = sorted(summary.values(), key=lambda s: s["total"])
+        return result
+
+    def winning_supplier_and_savings(self):
+        """
+        Determine current winning supplier by lowest total among responsive suppliers.
+        Returns (supplier, winning_total, pr_total, savings, pct_savings)
+        """
+        pr_total = self.rfq.purchase_request.total_amount()
+        suppliers = self.supplier_summary()
+        # find first supplier with responsive_count == number_of_pr_items (complete & responsive)
+        num_items = self.rfq.purchase_request.items.count()
+        winner = None
+        for s in suppliers:
+            if s["responsive_count"] >= num_items:
+                winner = s
+                break
+        if not winner:
+            return None, None, pr_total, None, None
+
+        winning_total = winner["total"]
+        savings = (pr_total - winning_total)
+        pct = (savings / pr_total * 100) if pr_total else 0
+        return winner["supplier"], winning_total, pr_total, savings, pct
 
 class AOQLine(models.Model):
     aoq = models.ForeignKey(AbstractOfQuotation, related_name="lines", on_delete=models.CASCADE)
@@ -325,3 +475,11 @@ class Signatory(models.Model):
 
     def __str__(self):
         return f"{self.name} — {self.designation}"
+
+class ActionLog(models.Model):
+    actor = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    action = models.CharField(max_length=200)
+    target_type = models.CharField(max_length=50, blank=True, null=True)
+    target_id = models.IntegerField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)

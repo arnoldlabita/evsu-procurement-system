@@ -1,0 +1,106 @@
+{% extends "procurement/base.html" %}
+{% block content %}
+<div class="mb-3 d-flex justify-content-between">
+  <div>
+    <h4 class="mb-0">RFQ — {{ rfq.rfq_number|default:"(no #)" }}</h4>
+    <small class="text-muted">PR: {{ rfq.purchase_request.pr_number }}</small>
+  </div>
+  <div>
+    <a class="btn btn-sm btn-maroon" href="{% url 'procurement:add_bid' rfq.pk %}">Add Bidder</a>
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs" id="rfqTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">Overview</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="items-tab" data-bs-toggle="tab" data-bs-target="#items" type="button" role="tab">Items</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="bidders-tab" data-bs-toggle="tab" data-bs-target="#bidders" type="button" role="tab">Bidders ({{ rfq.bids.count }})</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="aoq-tab" data-bs-toggle="tab" data-bs-target="#aoq" type="button" role="tab">AOQ</button>
+  </li>
+</ul>
+
+<div class="tab-content border p-3 mt-2" id="rfqTabsContent">
+  <!-- Overview -->
+  <div class="tab-pane fade show active" id="overview" role="tabpanel">
+    <dl class="row">
+      <dt class="col-sm-3">RFQ Date</dt><dd class="col-sm-9">{{ rfq.date|date:"M d, Y" }}</dd>
+      <dt class="col-sm-3">PR No.</dt><dd class="col-sm-9">{{ rfq.purchase_request.pr_number }}</dd>
+      <dt class="col-sm-3">Funding</dt><dd class="col-sm-9">{{ rfq.purchase_request.funding }}</dd>
+      <dt class="col-sm-3">Requestor</dt><dd class="col-sm-9">{{ rfq.purchase_request.requisitioner }}</dd>
+    </dl>
+  </div>
+
+  <!-- Items -->
+  <div class="tab-pane fade" id="items" role="tabpanel">
+    <table class="table table-sm">
+      <thead><tr><th>Stock No</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Cost (PR)</th></tr></thead>
+      <tbody>
+        {% for item in rfq.purchase_request.items.all %}
+        <tr>
+          <td>{{ item.stock_no }}</td>
+          <td>{{ item.description }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ item.unit }}</td>
+          <td>₱{{ item.unit_cost|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">No items found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Bidders -->
+  <div class="tab-pane fade" id="bidders" role="tabpanel">
+    <table class="table">
+      <thead><tr><th>Supplier</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for bid in rfq.bids.all %}
+        <tr>
+          <td>{{ bid.supplier.name }}</td>
+          <td>{{ bid.get_status_display }}</td>
+          <td>₱{{ bid.total_bid_amount|floatformat:2 }}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-maroon" href="{% url 'procurement:enter_bid_lines' bid.id %}">Enter Bids</a>
+            <a class="btn btn-sm btn-outline-maroon" href="{% url 'procurement:edit_bid' bid.id %}">Edit</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted">No bidders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- AOQ placeholder -->
+  <div class="tab-pane fade" id="aoq" role="tabpanel">
+    <p class="text-muted">AOQ summary will appear here once AOQ lines are created.</p>
+    <a class="btn btn-sm btn-maroon" href="{% url 'procurement:create_aoq' rfq.pk %}">Create AOQ</a>
+  </div>
+</div>
+
+<!-- workflow_controls.html (include this partial where appropriate) -->
+<div class="d-flex gap-2 mt-3">
+  <form method="post" action="{% url 'procurement:advance_pr_stage' rfq.purchase_request.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="to_award">
+    <button type="submit" class="btn btn-maroon">Move to Award</button>
+  </form>
+    {% include "procurement/partials/workflow_controls.html" %}
+  <form method="post" action="{% url 'procurement:advance_pr_stage' rfq.purchase_request.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="to_po">
+    <button type="submit" class="btn btn-outline-maroon">Move to PO</button>
+  </form>
+
+  <a class="btn btn-outline-secondary" href="{% url 'procurement:rfq_process' rfq.pk %}">Back to RFQ</a>
+</div>
+
+{% endblock %}

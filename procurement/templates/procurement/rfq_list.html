@@ -1,43 +1,37 @@
 {% extends "procurement/base.html" %}
 {% block content %}
-
-<div class="container mt-4">
-  <h3 class="text-center mb-4">Request for Quotation (RFQ) List</h3>
-
-  {% if rfqs %}
-  <table class="table table-bordered table-hover align-middle">
-    <thead class="table-dark">
-      <tr>
-        <th scope="col">#</th>
-        <th scope="col">RFQ No.</th>
-        <th scope="col">Date</th>
-        <th scope="col">PR No.</th>
-        <th scope="col">Department / Office</th>
-        <th scope="col" class="text-center">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for rfq in rfqs %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ rfq.id }}</td>
-        <td>{{ rfq.date|date:"M d, Y" }}</td>
-        <td>{{ rfq.purchase_request.pr_number }}</td>
-        <td>{{ rfq.purchase_request.department }}</td>
-        <td class="text-center">
-          <a href="{% url 'procurement:rfq_preview' rfq.id %}" class="btn btn-sm btn-primary">
-            Preview
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="alert alert-info text-center">
-    No Request for Quotation records found.
-  </div>
-  {% endif %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Requests for Quotation</h3>
+  <a class="btn btn-maroon" href="{% url 'procurement:pr_list' %}">Back to PRs</a>
 </div>
 
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>RFQ #</th>
+      <th>PR No.</th>
+      <th>PR Date</th>
+      <th>RFQ Date</th>
+      <th>Bidders</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rfq in rfqs %}
+    <tr>
+      <td>{{ rfq.rfq_number|default:"-" }}</td>
+      <td>{{ rfq.purchase_request.pr_number }}</td>
+      <td>{{ rfq.purchase_request.pr_date|date:"M d, Y" }}</td>
+      <td>{{ rfq.date|date:"M d, Y" }}</td>
+      <td>{{ rfq.bids.count }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-maroon" href="{% url 'procurement:rfq_process' rfq.pk %}">Process</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'procurement:rfq_preview' rfq.pk %}">Preview</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-center text-muted">No RFQs found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

@@ -1,0 +1,96 @@
+<div>
+  <h5>Abstract of Quotation</h5>
+  {% with summary=aoq.summarize %}
+    <table class="table">
+      <thead><tr><th>Supplier</th><th>Total</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for s in summary.values %}
+        <tr>
+          <td>{{ s.supplier.name }}</td>
+          <td>₱{{ s.total|floatformat:2 }}</td>
+          <td>
+            <form method="post" action="{% url 'procurement:award_aoq' aoq.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="supplier_id" value="{{ s.supplier.pk }}">
+              <button class="btn btn-sm btn-maroon" type="submit"
+                onclick="return confirm('Award to {{ s.supplier.name }}?')">Award</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endwith %}
+</div>
+
+<div class="mb-3">
+  <h5>Abstract & Award Summary</h5>
+
+  <div class="row mb-2">
+    <div class="col-md-4">
+      <strong>PR Total:</strong> ₱{{ pr_total|floatformat:2 }}
+    </div>
+    <div class="col-md-4">
+      <strong>Winning Total:</strong> {% if winning_total %} ₱{{ winning_total|floatformat:2 }} {% else %} - {% endif %}
+    </div>
+    <div class="col-md-4">
+      <strong>Savings:</strong>
+      {% if savings is not None %}
+        <span class="text-success">₱{{ savings|floatformat:2 }}</span>
+        ({{ pct_savings|floatformat:2 }}%)
+      {% else %}
+        <span class="text-muted">No winner / incomplete bids</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Supplier</th>
+        <th>Responsive Lines</th>
+        <th>Total Bid</th>
+        <th>Difference vs PR</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in supplier_summary %}
+      <tr {% if winner_supplier and s.supplier.pk == winner_supplier.pk %} class="table-success" {% endif %}>
+        <td>{{ s.supplier.name }}</td>
+        <td>{{ s.responsive_count }}</td>
+        <td>₱{{ s.total|floatformat:2 }}</td>
+        <td>
+          {% if pr_total %}
+            {% with diff=pr_total|floatformat:2|floatval - s.total %}
+              ₱{{ pr_total|floatformat:2|floatformat:"2" }} - ₱{{ s.total|floatformat:2 }} = ₱{{ (pr_total - s.total)|floatformat:2 }}
+            {% endwith %}
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'procurement:award_aoq' aoq.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="supplier_id" value="{{ s.supplier.pk }}">
+            <button class="btn btn-sm btn-maroon" type="submit" onclick="return confirm('Award to {{ s.supplier.name }}?')">Award</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h6>Budget Breakdown</h6>
+<table class="table table-sm">
+  <thead><tr><th>Category</th><th>PR Total</th><th>AOQ Total</th><th>Diff</th></tr></thead>
+  <tbody>
+    {% for cat, pr_amt in pr_breakdown.items %}
+    <tr>
+      <td>{{ cat }}</td>
+      <td>₱{{ pr_amt|floatformat:2 }}</td>
+      <td>₱{{ aoq_breakdown_by_category|get_item:cat|default:0|floatformat:2 }}</td>
+      <td>₱{{ pr_amt|floatformat:2|float_sub:aoq_breakdown_by_category|get_item:cat|default:0 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

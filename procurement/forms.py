@@ -156,6 +156,21 @@ class BidForm(forms.ModelForm):
             "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
+    def __init__(self, *args, rfq=None, **kwargs):
+        """
+        Accept 'rfq' so we can validate duplicate suppliers for that RFQ at the form level.
+        """
+        self.rfq = rfq
+        super().__init__(*args, **kwargs)
+
+    def clean_supplier(self):
+        supplier = self.cleaned_data.get("supplier")
+        if not supplier:
+            return supplier
+        # Prevent duplicate supplier for the same RFQ (additional to model constraint)
+        if self.rfq and Bid.objects.filter(rfq=self.rfq, supplier=supplier).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise ValidationError("This supplier already has a bid for this RFQ.")
+        return supplier
 
 class BidLineForm(forms.ModelForm):
     class Meta:
@@ -166,6 +181,14 @@ class BidLineForm(forms.ModelForm):
             "unit_price": forms.NumberInput(attrs={"class": "form-control form-control-sm"}),
             "compliant": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If the form has instance and it's bound to a Bid, restrict pr_item choices
+        if self.instance and getattr(self.instance, "bid", None):
+            rfq = getattr(self.instance.bid, "rfq", None)
+            if rfq:
+                self.fields['pr_item'].queryset = PRItem.objects.filter(purchase_request=rfq.purchase_request)
 
 
 BidLineFormSet = inlineformset_factory(

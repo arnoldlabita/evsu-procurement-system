@@ -1,0 +1,14 @@
+<table class="table table-sm">
+  <thead><tr><th>Stock No</th><th>Description</th><th>Qty</th><th>Unit</th><th>PR Unit Cost</th></tr></thead>
+  <tbody>
+    {% for item in rfq.purchase_request.items.all %}
+    <tr>
+      <td>{{ item.stock_no }}</td>
+      <td>{{ item.description }}</td>
+      <td>{{ item.quantity }}</td>
+      <td>{{ item.unit }}</td>
+      <td>₱{{ item.unit_cost|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
