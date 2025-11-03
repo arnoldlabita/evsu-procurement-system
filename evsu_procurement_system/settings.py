@@ -146,3 +146,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = "/procurement/dashboard/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 LOGIN_URL = "/accounts/login/"
+
+# Allow embedding from same origin (for modal iframes)
+X_FRAME_OPTIONS = 'SAMEORIGIN'

@@ -8,7 +8,6 @@
 <table class="table table-striped">
   <thead>
     <tr>
-      <th>RFQ #</th>
       <th>PR No.</th>
       <th>PR Date</th>
       <th>RFQ Date</th>
@@ -19,7 +18,6 @@
   <tbody>
     {% for rfq in rfqs %}
     <tr>
-      <td>{{ rfq.rfq_number|default:"-" }}</td>
       <td>{{ rfq.purchase_request.pr_number }}</td>
       <td>{{ rfq.purchase_request.pr_date|date:"M d, Y" }}</td>
       <td>{{ rfq.date|date:"M d, Y" }}</td>

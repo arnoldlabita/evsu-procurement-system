@@ -3,10 +3,10 @@
 <h3>Suppliers</h3>
 <a href="{% url 'procurement:supplier_create' %}" class="btn btn-primary mb-2">New Supplier</a>
 <table class="table table-bordered">
-<thead class="table-maroon"><tr><th>Name</th><th>Contact</th><th>Accredited</th></tr></thead>
+<thead class="table-maroon"><tr><th>Name</th><th>Contact Person</th><th>Contact No.</th><th>Email Address</th><th>Tin</th><th>Accredited</th></tr></thead>
 <tbody>
 {% for s in suppliers %}
-<tr><td>{{ s.name }}</td><td>{{ s.contact_no }}</td><td>{{ s.contact_email }}</td><td>{{ s.accredited }}</td></tr>
+<tr><td>{{ s.name }}</td><td>{{ s.contact_person }}</td><td>{{ s.contact_no }}</td><td>{{ s.contact_email }}</td><td>{{ s.tin }}</td><td>{{ s.accredited }}</td></tr>
 {% empty %}<tr><td colspan="3">No suppliers.</td></tr>{% endfor %}
 </tbody>
 </table>

@@ -6,87 +6,137 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Purchase Request</title>
-  <style>
-    body {
-      font-family: "Times New Roman", serif;
-      font-size: 13px;
-      color: #000;
-      background: #fff;
-      margin: 40px 50px;
+<style>
+  body {
+    font-family: "Times New Roman", serif;
+    font-size: 13px;
+    color: #000;
+    background: #fff;
+    margin: 40px 40px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    border-spacing: 0;
+    max-width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    vertical-align: middle;
+  }
+
+  th {
+    text-align: center;
+    font-weight: bold;
+  }
+
+  .no-border td {
+    border: none !important;
+    padding: 2px 6px;
+  }
+
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .fw-bold { font-weight: bold; }
+
+  .signature-block {
+    width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+  }
+
+  .signature-block td {
+    vertical-align: top;
+    padding: 10px;
+    height: auto;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 0.6in;
+    }
+
+    html, body {
+      background: #fff !important;
+      color: #000 !important;
+      margin: 0;
+      padding: 0;
+      font-size: 13px !important;
     }
 
     table {
-      border-collapse: collapse;
       width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      table-layout: auto;
+      max-width: 100%;
     }
 
     th, td {
       border: 1px solid #000;
       padding: 4px 6px;
       vertical-align: middle;
+      overflow-wrap: break-word;
+      white-space: normal;
     }
 
-    th {
-      text-align: center;
-      font-weight: bold;
+    .nowrap {
+      white-space: nowrap !important;
     }
-
-    .no-border td {
-      border: none;
-      padding: 2px 6px;
-    }
-
-    .center { text-align: center; }
-    .right { text-align: right; }
-    .fw-bold { font-weight: bold; }
 
     .signature-block td {
-      border: 1px solid #000;
-      padding: 10px;
-      vertical-align: top;
+      height: auto !important;
     }
 
-    .no-print {
-      margin-bottom: 10px;
+    .no-print, .navbar, .sidebar, .btn {
+      display: none !important;
     }
 
-    @media print {
-      .no-print { display: none !important; }
-      body { margin: 0; }
+    .page-container, .print-container {
+      margin: 0 auto;
+      width: 100%;
+      display: block;
+      position: relative;
     }
 
-    td p {
-  margin: 2px 0;
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      box-sizing: border-box;
+    }
+
+    .footer-section, .funding-section {
+      page-break-inside: avoid;
+    }
   }
-
-    @media print {
-    td {
-    vertical-align: top !important;
-    }
-  }
-  </style>
+</style>
 </head>
 <body>
-
-  <!-- Print Button -->
-  <div class="no-print right mb-3">
-    <button onclick="window.print()">🖨️ Print PR</button>
-  </div>
+  
 
   <!-- Header -->
   <p style="font-size:12px; float:right; margin-top:-20px;"><em>Appendix 60</em></p>
-  <div class="center" style="margin-top:40px;">
+  <div class="center" style="margin-top:60px;">
     <h3 style="margin-bottom:40px;">PURCHASE REQUEST</h3>
   </div>
-<div style="display: flex; justify-content: space-between; width: 74%;">
-  <div>Entity Name: _________________________</div>
-  <div>Fund Cluster: _________________________</div>
-</div>
+  <div style="display: flex; justify-content: space-between; width: 74%;">
+    <div>Entity Name: _________________________</div>
+    <div>Fund Cluster: _________________________</div>
+  </div>
+
   <!-- Header Table -->
   <table style="margin-top:0px;">
     <tr>
       <td>Office/Section: {{ pr.office_section }}</td>
-      <td>PR No.: <u>{{ pr.pr_number }}</u></td>
+      <td>PR No.: {{ pr.pr_number }}</td>
     </tr>
     <tr>
       <td>Responsibility Center Code: ____________</td>
@@ -129,47 +179,57 @@
   <!-- Purpose -->
   <p style="margin-top:10px;"><strong>Purpose:</strong> <u>{{ pr.purpose }}</u></p>
 
-  <!-- Signatory Section -->
-  <table class="signature-block" style="margin-top:15px;">
+<table class="signature-block" style="margin-top:15px; width:100%; table-layout:fixed; border-collapse:collapse;">
+  <tr>
+    <td style="width:60%; vertical-align:top; padding:10px;">
+      <strong>Requested by:</strong><br><br>
+      Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;___________________________<br>
+      Printed Name: &nbsp;&nbsp;<strong><u><span class="nowrap">{{ pr.requisitioner }}</span></u></strong><br>
+      Designation: &nbsp;&nbsp;&nbsp;&nbsp;<u><span class="nowrap">{{ pr.designation }}</span></u>
+    </td>
+    <td style="width:40%; vertical-align:top; padding:10px;">
+      <strong>Approved by:</strong><br><br>
+      Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;______________________<br>
+      Printed Name: &nbsp;&nbsp;<strong><u><span class="nowrap">DENNIS C. DE PAZ, Ph.D.</span></u></strong><br>
+      Designation: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<u><span class="nowrap">University President</span></u>
+    </td>
+  </tr>
+</table>
+
+
+  <!-- Fund Source Section -->
+  <table class="no-border funding-section" style="margin-top:10px; width:100%;">
     <tr>
-      <td style="width:50%;">
-        <strong>Requested by:</strong><br><br>
-        Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;___________________________<br>
-        Printed Name:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong><u>{{ pr.requisitioner }}</u></strong><br>
-        Designation: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<u>{{ pr.designation }}</u>
-      </td>
-      <td style="width:50%;">
-        <strong>Approved by:</strong><br><br>
-        Signature: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;________________________<br>
-        Printed Name:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong><u>DENNIS C. DE PAZ, Ph.D.</u></strong><br>
-        Designation:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<u>University President</u>
+      <td style="width:70%;"></td>
+      <td style="width:30%; text-align:center; vertical-align:top;">
+        <p style="text-align:left; margin-bottom:5px;">P.R. Charge to: <strong><u>{{ pr.funding }}</u></strong></p>
+        <p style="text-align:left;">Total Amount: <strong>₱ {{ pr.total_amount|floatformat:2|intcomma }}</strong></p>
+
+        {% if pr.funding == "TRF" %}
+        <div style="margin-top:35px; text-align:center; line-height:1.3; display:inline-block; width:100%;">
+          <p style="margin:0; font-weight:bold; text-decoration:underline;">RUBY N. MANCIO, CPA</p>
+          <p style="margin:0;">University Accountant</p>
+        </div>
+        {% elif pr.funding == "IGF" or pr.funding == "BRF" or pr.funding == "RAF" %}
+          <div style="margin-top:35px; text-align:center; line-height:1.3; display:inline-block; width:100%;">
+            <p style="margin:0; font-weight:bold; text-decoration:underline;">
+              <span class="nowrap">EVONE MAE KARMELLE P. BARANDA, CPA</span>
+            </p>
+            <p style="margin:0;">OIC Head Budget Office</p>
+          </div>
+        {% else %}
+          <div style="margin-top:35px; text-align:center; line-height:1.3; display:inline-block; width:100%;">
+            <p style="margin:0; font-weight:bold; text-decoration:underline;">
+              <span class="nowrap">EVONE MAE KARMELLE P. BARANDA, CPA</span>
+            </p>
+            <p style="margin:0;">OIC Head Budget Office</p>
+          </div>
+        {% endif %}
+
       </td>
     </tr>
   </table>
 
-<!-- Fund Source Section -->
-  <table class="no-border" style="margin-top:10px; width:100%;">
-    <tr>
-      <td style="width:70%;"></td>
-      <td style="width:30%; text-align:center; vertical-align:top;">
-        <p style="text-align:left; margin-bottom:5px;">P.R. Charge to: <strong>{{ pr.funding }}</strong></p>
-        <p style="text-align:left;">Total Amount: <strong>₱ {{ pr.total_amount|floatformat:2|intcomma }}</strong></p>
-
-      <div style="
-        margin-top:35px;
-        text-align:center;
-        line-height:1.3;
-        display:inline-block;
-        width:100%;
-      ">
-        <p style="margin:0; font-weight:bold; text-decoration:underline;">
-          EVONE MAE KARMELLE P. BARANDA, CPA
-        </p>
-        <p style="margin:0;">OIC Head Budget Office</p>
-      </div>
-    </td>
-  </tr>
-</table>
   {% if request.GET.auto_print == "true" %}
   <script>
   window.onload = function() {

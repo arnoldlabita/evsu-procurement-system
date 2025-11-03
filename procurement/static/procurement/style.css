@@ -1,73 +1,181 @@
-.maroon-bg { background-color:#800000 !important; }
-.table-maroon thead { background:#800000; color:white; }
-@media print { .no-print { display:none; } }
-
-.text-maroon { color: #800000 !important; }
-.btn-outline-maroon {
-  border-color: #800000;
-  color: #800000;
-}
-.btn-outline-maroon:hover {
-  background-color: #800000;
-  color: white;
-}
-.card-title {
-  font-weight: 600;
-}
-
-/* Typography and color */
+/* --- GENERAL STYLES --- */
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
   background-color: #fafafa;
+  color: #000;
 }
-.text-maroon { color: #800000 !important; }
-.maroon-bg { background-color: #800000 !important; }
 
-/* Buttons */
+.table-maroon thead {
+  background: #800000;
+  color: white;
+}
+
 .btn-outline-maroon {
   border-color: #800000;
   color: #800000;
 }
+
 .btn-outline-maroon:hover {
   background-color: #800000;
   color: white;
 }
 
-/* Cards and tables */
 .card {
   border-radius: 1rem;
-}
-.table-maroon thead {
-  background-color: #800000;
-  color: white;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Print mode */
+/* --- PRINT MODE FIX --- */
 @media print {
-  .no-print { display: none; }
-  body { background: white; }
+  @page {
+    size: A4 portrait;
+    margin: 0.75in 0.6in 0.75in 0.6in; /* top, right, bottom, left */
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: 12px !important;
+    zoom: 1 !important; /* prevent Chrome auto-scaling */
+  }
+
+  /* Keep containers stable */
+  .card, .container, .content {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    position: relative !important;
+  }
+
+  /* Keep table borders and alignment */
+  table, .table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    font-size: 0.9rem !important;
+    table-layout: fixed !important;
+  }
+
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 5px 6px !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Preserve header color */
+  .table-maroon thead {
+    background: #800000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide UI elements but retain structure */
+  .no-print,
+  .navbar,
+  .sidebar,
+  .btn,
+  footer {
+    display: none !important;
+  }
+
+  /* Keep rows and key blocks together */
+  tr, .table-wrapper, .signature-box, .funding-section {
+    page-break-inside: avoid !important;
+  }
+
+  /* Text alignment helpers */
+  .text-center { text-align: center !important; }
+  .text-right { text-align: right !important; }
+  .text-left  { text-align: left !important; }
+
+  /* Signature boxes */
+  .signature-box {
+    border: 1px solid #000 !important;
+    padding: 10px !important;
+    min-height: 100px !important;
+    vertical-align: top !important;
+  }
+
+  /* Consistent color printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Landscape override trigger */
+  .landscape & {
+    page: rotated;
+  }
 }
 
-@media print {
-  .table { font-size: 0.9rem; }
-  .page-break { page-break-after: always; }
+/* --- LANDSCAPE PRINT MODE (for wide tables like RFQ/AOQ) --- */
+@media print and (orientation: landscape) {
+  @page {
+    size: A4 landscape;
+    margin: 0.6in 0.5in 0.6in 0.5in; /* balanced for wide content */
+  }
+
+  html, body {
+    font-size: 11px !important;
+  }
+
+  table, .table {
+    font-size: 0.85rem !important;
+  }
+
+  th, td {
+    padding: 4px 5px !important;
+  }
+
+  /* Prevent cutoffs */
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  /* Adjust heading or footer placement */
+  h3, .header-title {
+    margin-top: 20px !important;
+  }
 }
 
-
-#item-table td.stock-no {
-  width: 50px;
-  text-align: center;
-  font-weight: 600;
+/* --- Modal Enhancements --- */
+.modal-backdrop.show {
+  opacity: 0.85 !important;
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
-td.line-total, #grand-total {
-  text-align: right;
-  font-weight: 600;
+.modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
-.mode-column select {
-  white-space: normal;
-  text-overflow: ellipsis;
+.modal.fade .modal-dialog {
+  transform: translateY(-20px);
+  transition: transform 0.3s ease-out;
 }
 
+.modal.show .modal-dialog {
+  transform: translateY(0);
+}
 
+.bg-maroon {
+  background-color: #800000 !important;
+}
+
+@media (max-width: 768px) {
+  #docPreviewFrame {
+    height: 70vh;
+  }
+}

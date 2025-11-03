@@ -745,6 +745,7 @@ class SignatoryListView(LoginRequiredMixin, ListView):
     template_name = "procurement/signatory_list.html"
     context_object_name = "signatories"
 
+
 # Create (regular page)
 @method_decorator(login_required, name="dispatch")
 class SignatoryCreateView(ProcurementOrAdminMixin, CreateView):
@@ -966,18 +967,30 @@ def enter_bid_lines(request, bid_id):
         })
 
     else:
-        # GET: Pre-populate missing BidLine entries so user sees all PR items
+
         formset = BidLineFormSet(instance=bid)
-        # If there are zero bidlines, create initial ones for each PR item (client-friendly)
-        if not bid.lines.exists():
-            initial = []
-            for itm in pr_items:
-                initial.append({"pr_item": itm.pk, "unit_price": "", "compliant": True})
-            formset = BidLineFormSet(instance=bid, initial=initial)
+
+        # Ensure all PR items have a BidLine entry (auto-create missing ones)
+        existing_pr_item_ids = set(bid.lines.values_list("pr_item_id", flat=True))
+        for pr_item in pr_items:
+            if pr_item.id not in existing_pr_item_ids:
+                BidLine.objects.create(
+                    bid=bid,
+                    pr_item=pr_item,
+                    unit_price=0,
+                    compliant=True,
+                )
+
+        # Reload the formset after ensuring all lines exist
+        formset = BidLineFormSet(instance=bid)
 
         return render(request, "procurement/enter_bid_lines.html", {
-            "bid": bid, "formset": formset, "rfq": rfq, "pr_items": pr_items
+            "bid": bid,
+            "formset": formset,
+            "rfq": rfq,
+            "pr_items": pr_items,
         })
+
 
 @login_required
 @user_passes_test(in_procurement_group)
@@ -989,6 +1002,29 @@ def create_aoq_from_rfq(request, rfq_id):
     else:
         messages.info(request, "AOQ already exists.")
     return redirect("procurement:aoq_detail", pk=aoq.pk)
+
+
+def abstract_of_quotation(request, rfq_id):
+    rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
+    pr = rfq.purchase_request
+    items = pr.items.all()  # ✅ PRItems linked to this RFQ
+    bids = rfq.bids.select_related("supplier").prefetch_related("lines__pr_item")
+
+    # Prepare a mapping of supplier → {pr_item_id → BidLine}
+    supplier_data = {}
+    for bid in bids:
+        supplier_data[bid.supplier] = {}
+        for line in bid.lines.all():
+            supplier_data[bid.supplier][line.pr_item_id] = line
+
+    context = {
+        "rfq": rfq,
+        "items": items,
+        "suppliers": [bid.supplier for bid in bids],
+        "supplier_data": supplier_data,
+    }
+    return render(request, "procurement/aoq_summary.html", context)
+
 
 @login_required
 @user_passes_test(in_procurement_group)

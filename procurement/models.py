@@ -299,7 +299,8 @@ class Bid(models.Model):
 class BidLine(models.Model):
     bid = models.ForeignKey("Bid", related_name="lines", on_delete=models.CASCADE)
     pr_item = models.ForeignKey("PRItem", on_delete=models.CASCADE)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    offer = models.CharField(max_length=255, blank=True, null=True)
     compliant = models.BooleanField(default=True)
 
     def total_cost(self):

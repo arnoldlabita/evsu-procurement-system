@@ -93,19 +93,21 @@
   <a href="{% url 'procurement:assign_pr_number' pr.pk %}" class="btn btn-outline-maroon">Edit PR</a>
   {% endif %}
 
-<!-- ✅ Print Button appears only if PR number exists -->
-{% if pr.pr_number %}
-<a href="{% url 'procurement:pr_preview' pr.pk %}" 
-  target="_blank" 
-  class="btn btn-secondary">
-  🖨️ Print PR
-</a>
-{% else %}
-  <button class="btn btn-secondary" disabled title="Assign PR number first">
-    🖨️ Print PR
-  </button>
-{% endif %}
-</div>
+    <!-- ✅ Print Button appears only if PR number exists -->
+    {% if pr.pr_number %}
+    <button 
+      class="btn btn-secondary"
+      data-url="{% url 'procurement:pr_preview' pr.pk %}?auto_print=false"
+      data-title="Purchase Request Preview"
+      onclick="openDocPreview(this.dataset.url, this.dataset.title)">
+      🖨️ Print PR
+    </button>
+    {% else %}
+      <button class="btn btn-secondary" disabled title="Assign PR number first">
+        🖨️ Print PR
+      </button>
+    {% endif %}
+  </div>
 
   {% if user|has_group:"Procurement" and pr.notes %}
   <!-- ✅ Move this OUTSIDE the flexbox -->
@@ -113,7 +115,47 @@
     <p class="mb-0"><strong>Last Update:</strong> {{ pr.last_update|localtime|date:"M d, Y h:i A" }}</p>
   </div>
   {% endif %}
+</div>
 
+<!-- ✅ Modal for Document Preview -->
+<div class="modal fade" id="docPreviewModal" tabindex="-1" aria-labelledby="docPreviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%;">
+    <div class="modal-content">
+      <div class="modal-header bg-maroon text-white">
+        <h5 class="modal-title" id="docPreviewLabel">Document Preview</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="docPreviewFrame" src="" style="width:100%; height:80vh; border:none;" title="Document Preview"></iframe>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-outline-maroon" onclick="printPreview()">🖨️ Print</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JavaScript for Modal -->
+<script>
+function openDocPreview(url, title = "Document Preview") {
+  const modalTitle = document.getElementById("docPreviewLabel");
+  const iframe = document.getElementById("docPreviewFrame");
+  modalTitle.textContent = title;
+  iframe.src = url;
+
+  const modal = new bootstrap.Modal(document.getElementById('docPreviewModal'));
+  modal.show();
+}
+
+function printPreview() {
+  const iframe = document.getElementById("docPreviewFrame");
+  iframe.contentWindow.focus();
+  iframe.contentWindow.print();
+}
+</script>
+
+<!-- ✅ Custom Styles -->
 <style>
 .text-maroon { color: #800000; }
 .btn-maroon { background-color: #800000; color: white; border: none; }
@@ -121,12 +163,42 @@
 .btn-outline-maroon { border: 1px solid #800000; color: #800000; }
 .btn-outline-maroon:hover { background-color: #800000; color: white; }
 .table-maroon { background-color: #800000; }
+
+.modal-backdrop.show {
+  opacity: 0.85 !important;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.modal.fade .modal-dialog {
+  transform: translateY(-20px);
+  transition: transform 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+  transform: translateY(0);
+}
+
+.bg-maroon {
+  background-color: #800000 !important;
+}
+
+@media (max-width: 768px) {
+  #docPreviewFrame {
+    height: 70vh;
+  }
+}
+
 @media print {
   .btn, .no-print, .navbar, footer { display: none !important; }
   body { background: white; }
 }
 </style>
-
-
 
 {% endblock %}

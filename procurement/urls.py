@@ -70,7 +70,7 @@ urlpatterns = [
     path("prs/<int:pr_id>/advance/", views.advance_pr_stage, name="advance_pr_stage"),
     path("rfqs/<int:rfq_id>/save_resolution/", views.save_resolution, name="save_resolution"),
     path("aoqs/<int:aoq_id>/award/", views.award_aoq_view, name="award_aoq"),
-
+    path('rfq/<int:rfq_id>/aoq/', views.abstract_of_quotation, name='abstract_of_quotation'),
     # ----------------------------
     # Agency Procurement Requests (APR)
     # ----------------------------

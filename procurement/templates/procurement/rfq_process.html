@@ -7,6 +7,10 @@
 
   <a class="btn btn-maroon" href="{% url 'procurement:add_bid' rfq.id %}">Add Bidder</a>
 
+  <a href="{% url 'procurement:abstract_of_quotation' rfq.id %}" class="btn btn-maroon">
+    Abstract of Quotation
+  </a>
+
   <table class="table mt-3">
     <thead><tr><th>Supplier</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
     <tbody>

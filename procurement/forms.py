@@ -123,7 +123,7 @@ PRItemFormSet = inlineformset_factory(
 class SupplierForm(forms.ModelForm):
     class Meta:
         model = Supplier
-        fields = ["name", "address", "contact_person", "contact_no", "tin", "accredited"]
+        fields = ["name", "address", "contact_person", "contact_no", "contact_email", "tin", "accredited"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "address": forms.TextInput(attrs={"class": "form-control"}),
@@ -172,27 +172,49 @@ class BidForm(forms.ModelForm):
             raise ValidationError("This supplier already has a bid for this RFQ.")
         return supplier
 
+from django import forms
+from .models import BidLine, PRItem, Bid
+
 class BidLineForm(forms.ModelForm):
     class Meta:
         model = BidLine
-        fields = ["pr_item", "unit_price", "compliant"]
+        fields = ["pr_item", "offer", "unit_price", "compliant"]
         widgets = {
-            "pr_item": forms.Select(attrs={"class": "form-select form-select-sm"}),
-            "unit_price": forms.NumberInput(attrs={"class": "form-control form-control-sm"}),
+            # Make PR item appear as static text (read-only, not dropdown)
+            "pr_item": forms.TextInput(attrs={
+                "class": "form-control-plaintext form-control-sm",
+                "readonly": True
+            }),
+            # Add Offer text box
+            "offer": forms.TextInput(attrs={
+                "class": "form-control form-control-sm",
+                "placeholder": "Enter offer (optional)"
+            }),
+            # Make Unit Price optional, no default prompt
+            "unit_price": forms.NumberInput(attrs={
+                "class": "form-control form-control-sm",
+                "placeholder": ""
+            }),
             "compliant": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # If the form has instance and it's bound to a Bid, restrict pr_item choices
+
+        # Make 'unit_price' optional
+        self.fields["unit_price"].required = False
+
+        # If bound to a Bid, set PR items properly
         if self.instance and getattr(self.instance, "bid", None):
             rfq = getattr(self.instance.bid, "rfq", None)
             if rfq:
-                self.fields['pr_item'].queryset = PRItem.objects.filter(purchase_request=rfq.purchase_request)
+                self.fields["pr_item"].queryset = PRItem.objects.filter(
+                    purchase_request=rfq.purchase_request
+                )
 
 
 BidLineFormSet = inlineformset_factory(
-    Bid, BidLine, form=BidLineForm, extra=1, can_delete=True
+    Bid, BidLine, form=BidLineForm, extra=0, can_delete=True
 )
 
 

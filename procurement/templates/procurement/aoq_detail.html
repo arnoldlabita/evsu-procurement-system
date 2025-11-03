@@ -9,7 +9,7 @@
 {% for line in aoq.lines.filter(pr_item=item) %}
 {% with lowest=aoq.lines.filter(pr_item=item,responsive=True).order_by('unit_price').first %}
 <tr class="{% if line == lowest %}table-success{% endif %}">
-  <td></td><td>{{ line.supplier.name }}</td><td>{{ line.unit_price }}</td><td>{{ line.responsive }}</td>
+  <td></td><td>{{ line.supplier.name }}</td><td>{{ line.offer|default_if_none:"-" }}</td><td>{{ line.unit_price }}</td><td>{{ line.responsive }}</td>
 </tr>
 {% endwith %}
 {% endfor %}

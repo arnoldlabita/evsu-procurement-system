@@ -1,0 +1,60 @@
+{% extends "procurement/base.html" %}
+{% load humanize dict_extras %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Abstract of Quotation — {{ rfq.rfq_number }}</h2>
+  <p><strong>Purchase Request:</strong> {{ rfq.purchase_request.pr_number }}</p>
+
+  <div class="table-responsive mt-4">
+    <table class="table table-bordered align-middle text-center">
+      <thead class="table-light">
+        <tr>
+          <th class="text-center">Stock No.</th>
+          <th class="text-start">Item Description</th>
+          <th class="text-center">Unit</th>
+          <th class="text-center">Quantity</th>
+          {% for supplier in suppliers %}
+            <th colspan="2" class="text-center">{{ supplier.name }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td class="text-center">{{ item.stock_no }}</td>
+          <td class="text-start">{{ item.description }}</td>
+          <td class="text-center">{{ item.unit }}</td>
+          <td class="text-center">{{ item.quantity }}</td>
+
+          {% for supplier in suppliers %}
+            {% with line=supplier_data|get_item:supplier|get_item:item.id %}
+              {% if line %}
+                <td class="text-center">{{ line.offer|default_if_none:"" }}</td>
+                <td class="text-end">{{ line.unit_price|floatformat:2|intcomma|default_if_none:"" }}</td>
+              {% else %}
+                <td></td><td></td>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="javascript:history.back()" class="btn btn-outline-maroon mb-3">← Back</a>
+  </div>
+</div>
+
+<style>
+  th, td { vertical-align: middle; }
+  .table th[colspan="2"] { background-color: #f8f9fa; }
+  .btn-outline-maroon {
+    border: 1px solid #800000;
+    color: #800000;
+  }
+  .btn-outline-maroon:hover {
+    background-color: #800000;
+    color: white;
+  }
+</style>
+{% endblock %}
