@@ -112,33 +112,15 @@ class PurchaseRequest(models.Model):
          "Direct Retail Purchase of Petroleum Fuel, Oil and Lubricant Products, Electronic Charging Devices, and Online Subscriptions"),
     ]
 
-    mode_of_procurement = models.CharField(
-        max_length=150,
-        choices=MODE_OF_PROCUREMENT_CHOICES,
-        blank=True,
-        null=True,
-    )
-
-    negotiated_type = models.CharField(
-        max_length=200,
-        choices=NEGOTIATED_SUB_CHOICES,
-        blank=True,
-        null=True,
-        help_text="If 'Negotiated Procurement' is selected, specify the type here."
-    )
+    mode_of_procurement = models.CharField(max_length=150, choices=MODE_OF_PROCUREMENT_CHOICES, blank=True,null=True,)
+    negotiated_type = models.CharField(max_length=200, choices=NEGOTIATED_SUB_CHOICES, blank=True, null=True, help_text="If 'Negotiated Procurement' is selected, specify the type here.")
 
     # --- Requestor Info ---
     requisitioner = models.CharField(max_length=255, blank=True, null=True)
     designation = models.CharField(max_length=255, blank=True, null=True)
     office_section = models.CharField(max_length=255, blank=True, null=True)
     purpose = models.TextField(blank=True, null=True)
-    funding = models.CharField(
-        max_length=50,
-        choices=FUNDING_CHOICES,
-        blank=True,
-        null=True,
-        help_text="Select the fund source"
-    )
+    funding = models.CharField(max_length=50, choices=FUNDING_CHOICES, blank=True, null=True, help_text="Select the fund source")
     attachments = models.FileField(upload_to="pr_attachments/", blank=True, null=True)
 
 
@@ -159,6 +141,13 @@ class PurchaseRequest(models.Model):
     pr_date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
 
+    consolidated_in = models.ForeignKey(
+        "RequestForQuotation",
+        related_name="linked_prs",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
     # --- System Info ---
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="purchase_requests")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -240,15 +229,18 @@ class PRItem(models.Model):
 
 class RequestForQuotation(TimestampedModel):
     rfq_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
-    purchase_request = models.OneToOneField(PurchaseRequest, related_name="rfq", on_delete=models.CASCADE)
+    purchase_request = models.OneToOneField(PurchaseRequest, related_name="rfq", on_delete=models.CASCADE, null=True, blank=True)
+    consolidated_prs = models.ManyToManyField(PurchaseRequest, related_name="rfqs", blank=True)
     date = models.DateField(default=timezone.now)
     resolution = models.TextField(blank=True, null=True)
     resolution_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="rfq_resolutions_by")
     resolution_at = models.DateTimeField(null=True, blank=True)
-    # other fields as required
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    remarks = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.rfq_number or f"RFQ for {self.purchase_request}"
+        return self.rfq_number or f"RFQ {self.pk or ''}"
 
 # --- Bid models for RFQ processing ---
 class Bid(models.Model):
@@ -484,3 +476,20 @@ class ActionLog(models.Model):
     target_id = models.IntegerField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class RFQConsolidationLog(models.Model):
+    """Tracks all PR consolidation actions for auditing and traceability."""
+    rfq = models.ForeignKey(
+        "RequestForQuotation",
+        related_name="consolidation_logs",
+        on_delete=models.CASCADE
+    )
+    consolidated_prs = models.ManyToManyField("PurchaseRequest", related_name="consolidation_logs")
+    consolidated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    remarks = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        prs = ", ".join(self.consolidated_prs.values_list("pr_number", flat=True))
+        return f"RFQ {self.rfq.rfq_number} consolidated ({prs})"
+

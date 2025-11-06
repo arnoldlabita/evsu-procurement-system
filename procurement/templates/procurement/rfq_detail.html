@@ -103,4 +103,35 @@
   <a class="btn btn-outline-secondary" href="{% url 'procurement:rfq_process' rfq.pk %}">Back to RFQ</a>
 </div>
 
+{% if rfq.consolidation_logs.exists %}
+<hr>
+<h5 class="text-maroon mt-3">Consolidation History</h5>
+<table class="table table-sm table-bordered">
+  <thead class="table-light">
+    <tr>
+      <th>Date</th>
+      <th>User</th>
+      <th>Remarks</th>
+      <th>Linked PRs</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in rfq.consolidation_logs.all %}
+    <tr>
+      <td>{{ log.created_at|date:"M d, Y h:i A" }}</td>
+      <td>{{ log.consolidated_by }}</td>
+      <td>{{ log.remarks|default:"—" }}</td>
+      <td>
+        {% for pr in log.consolidated_prs.all %}
+          <span class="badge bg-secondary">{{ pr.pr_number }}</span>
+        {% empty %}
+          <span class="text-muted">None</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 {% endblock %}

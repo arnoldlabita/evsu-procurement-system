@@ -61,6 +61,7 @@ urlpatterns = [
     path("rfqs/", RFQListView.as_view(), name="rfq_list"),
     path("rfqs/<int:pk>/preview/", RFQPreviewView.as_view(), name="rfq_preview"),
     path("prs/<int:pr_id>/create_rfq/", create_rfq, name="create_rfq"),
+    path("rfq/<int:pk>/", views.rfq_detail, name="rfq_detail"),
     # RFQ processing routes
     path("rfqs/<int:pk>/process/", views.rfq_process, name="rfq_process"),
     path("prs/<int:rfq_id>/add_bid/", views.add_bid, name="add_bid"),
@@ -75,7 +76,7 @@ urlpatterns = [
     # Agency Procurement Requests (APR)
     # ----------------------------
     path("prs/<int:pr_id>/create_apr/", create_apr, name="create_apr"),
-
+    path("consolidate/", views.consolidate_to_rfq, name="consolidate_to_rfq"),
     # ----------------------------
     # Abstract of Quotation (AOQ)
     # ----------------------------

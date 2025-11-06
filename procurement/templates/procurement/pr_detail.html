@@ -117,6 +117,14 @@
   {% endif %}
 </div>
 
+{% if pr.consolidated_in %}
+  <p><strong>Consolidated in RFQ:</strong>
+     <a href="{% url 'procurement:rfq_detail' pr.consolidated_in.id %}">
+       {{ pr.consolidated_in.rfq_number }}
+     </a>
+  </p>
+{% endif %}
+
 <!-- ✅ Modal for Document Preview -->
 <div class="modal fade" id="docPreviewModal" tabindex="-1" aria-labelledby="docPreviewLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%;">

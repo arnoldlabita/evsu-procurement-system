@@ -10,7 +10,8 @@ from .models import (
     PurchaseOrder,
     Signatory,
     Bid,
-    BidLine
+    BidLine,
+    RFQConsolidationLog
 )
 
 
@@ -73,10 +74,16 @@ class RFQBidInline(admin.TabularInline):
 
 @admin.register(RequestForQuotation)
 class RFQAdmin(admin.ModelAdmin):
-    list_display = ("rfq_number", "purchase_request", "date", "created_by")
-    list_filter = ("date",)
-    search_fields = ("rfq_number", "purchase_request__pr_number")
-    inlines = [RFQBidInline]
+    list_display = ("rfq_number", "get_linked_prs", "created_by", "date")
+    search_fields = ("rfq_number", "purchase_request__pr_number", "consolidated_prs__pr_number")
+
+    def get_linked_prs(self, obj):
+        linked = []
+        if obj.purchase_request:
+            linked.append(obj.purchase_request.pr_number)
+        linked += list(obj.consolidated_prs.values_list("pr_number", flat=True))
+        return ", ".join(linked)
+    get_linked_prs.short_description = "Linked PRs"
 
 
 @admin.register(Signatory)
@@ -94,5 +101,15 @@ class AOQAdmin(admin.ModelAdmin):
 class POAdmin(admin.ModelAdmin):
     list_display = ("po_number", "supplier", "created_at", "submission_date")
     search_fields = ("po_number","supplier__name")
+
+@admin.register(RFQConsolidationLog)
+class RFQConsolidationLogAdmin(admin.ModelAdmin):
+    list_display = ("rfq", "get_prs", "consolidated_by", "created_at")
+    list_filter = ("created_at", "consolidated_by")
+    search_fields = ("rfq__rfq_number", "consolidated_prs__pr_number")
+
+    def get_prs(self, obj):
+        return ", ".join(obj.consolidated_prs.values_list("pr_number", flat=True))
+    get_prs.short_description = "Consolidated PRs"
 
 

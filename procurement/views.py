@@ -34,6 +34,17 @@ from .forms import (
     AssignPRNumberForm, BidForm, BidLineForm, BidLineFormSet
 )
 
+def rfq_pr_items(rfq):
+    """
+    Return queryset/list of PRItem objects that belong to the RFQ.
+    Works for both single-PR RFQs (rfq.purchase_request) and consolidated (rfq.consolidated_prs).
+    """
+    if rfq.purchase_request:
+        return rfq.purchase_request.items.all()
+    # For consolidated, aggregate items from all linked PRs
+    prs = rfq.consolidated_prs.all()
+    return PRItem.objects.filter(purchase_request__in=prs).select_related('purchase_request')
+
 
 # -----------------------
 # USER GROUP CHECKS
@@ -323,6 +334,9 @@ def create_rfq(request, pr_id):
             rfq.purchase_request = pr
             rfq.created_by = request.user
             rfq.save()
+            rfq.consolidated_prs.add(pr)
+            pr.consolidated_in = rfq
+            pr.save(update_fields=["consolidated_in"])
             messages.success(request, "RFQ created successfully.")
             return redirect("procurement:rfq_preview", pk=rfq.pk)
     else:
@@ -903,7 +917,7 @@ def enter_bid_lines(request, bid_id):
     bid = get_object_or_404(Bid, pk=bid_id)
     rfq = bid.rfq
     pr = rfq.purchase_request
-    pr_items = list(pr.items.all())
+    pr_items = list(rfq_pr_items(rfq))
 
     if request.method == "POST":
         formset = BidLineFormSet(request.POST, instance=bid)
@@ -1007,7 +1021,7 @@ def create_aoq_from_rfq(request, rfq_id):
 def abstract_of_quotation(request, rfq_id):
     rfq = get_object_or_404(RequestForQuotation, pk=rfq_id)
     pr = rfq.purchase_request
-    items = pr.items.all()  # ✅ PRItems linked to this RFQ
+    items = rfq_pr_items(rfq)
     bids = rfq.bids.select_related("supplier").prefetch_related("lines__pr_item")
 
     # Prepare a mapping of supplier → {pr_item_id → BidLine}
@@ -1148,3 +1162,64 @@ def aoq_export_csv(request, aoq_id):
     for s in aoq.supplier_summary():
         writer.writerow([s['supplier'].name, f"{s['total']:.2f}", s['responsive_count']])
     return response
+
+@login_required
+@user_passes_test(in_procurement_group)
+@require_POST
+def consolidate_to_rfq(request):
+    """
+    Create a consolidated RFQ from multiple PRs (selected_prs comes as CSV of ids).
+    This will:
+      - create RequestForQuotation (purchase_request left null),
+      - add selected PRs into rfq.consolidated_prs,
+      - set each PR.consolidated_in to the new RFQ (so template's pr.consolidated_in works).
+    """
+    selected = request.POST.get("selected_prs", "")
+    remarks = request.POST.get("remarks", "") or ""
+
+    if not selected:
+        messages.error(request, "Please select at least one Purchase Request to consolidate.")
+        return redirect("procurement:pr_list")
+
+    ids = [int(x) for x in selected.split(",") if x.strip().isdigit()]
+    prs = PurchaseRequest.objects.filter(id__in=ids)
+
+    if not prs.exists():
+        messages.error(request, "No valid Purchase Requests found.")
+        return redirect("procurement:pr_list")
+
+    # Optional validation: ensure compatible mode_of_procurement (example)
+    # modes = set(pr.mode_of_procurement for pr in prs if pr.mode_of_procurement)
+    # if len(modes) > 1:
+    #     messages.error(request, "Selected PRs have different modes of procurement and cannot be consolidated.")
+    #     return redirect("procurement:pr_list")
+
+    rfq_number = "CONSOL-" + "-".join([pr.pr_number for pr in prs if pr.pr_number])[:150]  # simple approach
+
+    rfq = RequestForQuotation.objects.create(
+        rfq_number=rfq_number,
+        created_by=request.user,
+        remarks=remarks
+    )
+
+    rfq.consolidated_prs.set(prs)
+    rfq.save()
+
+    for pr in prs:
+        pr.consolidated_in = rfq
+        pr.save(update_fields=["consolidated_in"])
+        # Log consolidation action
+        log = RFQConsolidationLog.objects.create(
+            rfq=rfq,
+            consolidated_by=request.user,
+            remarks=remarks,
+        )
+        log.consolidated_prs.set(prs)
+
+    messages.success(request, f"Consolidated RFQ {rfq.rfq_number} created with {prs.count()} PR(s).")
+    return redirect("procurement:rfq_process", pk=rfq.pk)
+
+@login_required
+def rfq_detail(request, pk):
+    rfq = get_object_or_404(RequestForQuotation, pk=pk)
+    return render(request, "procurement/rfq_detail.html", {"rfq": rfq})

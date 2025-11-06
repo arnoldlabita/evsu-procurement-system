@@ -56,11 +56,20 @@
 
 </form>
 
-
+{% if is_procurement %}
+<form id="pr-list-form" method="post" action="{% url 'procurement:consolidate_to_rfq' %}">
+  {% csrf_token %}
+  <input type="hidden" name="selected_prs" id="selected_prs">
+  <input type="hidden" name="remarks" id="remarks_input">
+{% endif %}
 
 <table id="pr-table" class="table table-bordered align-middle mt-3 shadow-sm">
   <thead class="table-maroon text-white">
     <tr>
+      <tr>
+      {% if is_procurement %}
+        <th style="width:30px;"><input type="checkbox" id="select-all" /></th>
+      {% endif %}
       <th>PR No.</th>
       <th>Requesting Office</th>
       <th>Status</th>
@@ -71,7 +80,13 @@
   </thead>
   <tbody>
     {% for pr in prs %}
-    <tr id="pr-row-{{ pr.pk }}">
+    <tr id="pr-row-{{ pr.pk }}" class="{% if pr.consolidated_in %}table-secondary{% endif %}">
+      {% if is_procurement %}
+      <td>
+        <input type="checkbox" class="pr-checkbox" value="{{ pr.id }}" {% if pr.consolidated_in %}disabled{% endif %}>
+      </td>
+      {% endif %}
+
       <td>{{ pr.pr_number|default:"Unassigned" }}</td>
       <td>{{ pr.office_section }}</td>
 
@@ -156,6 +171,83 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if is_procurement %}
+  <button type="button" id="consolidate-btn" class="btn btn-primary mt-2" disabled>
+    🧾 Consolidate to RFQ
+  </button>
+</form>
+{% endif %}
+
+{% if is_procurement %}
+<div class="modal fade" id="confirmConsolidateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5>Confirm Consolidation</h5></div>
+      <div class="modal-body">
+        <p>Selected PRs:</p>
+        <ul id="selected-pr-list"></ul>
+        <div class="mb-2">
+          <label>Remarks (optional)</label>
+          <textarea id="remarks" class="form-control"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="confirm-create-btn">Create RFQ</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const checkboxes = document.querySelectorAll('.pr-checkbox');
+  const selectAll = document.getElementById('select-all');
+  const consolidateBtn = document.getElementById('consolidate-btn');
+  const selectedPrsInput = document.getElementById('selected_prs');
+  const selectedPrList = document.getElementById('selected-pr-list');
+  const remarks = document.getElementById('remarks');
+  const confirmModalEl = document.getElementById('confirmConsolidateModal');
+  const bsModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
+
+  function updateSelected() {
+    if (!consolidateBtn) return;
+    const selected = [...document.querySelectorAll('.pr-checkbox:checked')];
+    consolidateBtn.disabled = selected.length === 0;
+    if (selectedPrList) {
+      selectedPrList.innerHTML = '';
+      selected.forEach(cb => {
+        const row = cb.closest('tr');
+        const prNumber = row.querySelector('td:nth-child(2)').innerText.trim();
+        const li = document.createElement('li');
+        li.textContent = prNumber;
+        selectedPrList.appendChild(li);
+      });
+    }
+  }
+
+  if (checkboxes) checkboxes.forEach(cb => cb.addEventListener('change', updateSelected));
+  if (selectAll) selectAll.addEventListener('change', e => {
+    document.querySelectorAll('.pr-checkbox:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+    updateSelected();
+  });
+
+  if (consolidateBtn) consolidateBtn.addEventListener('click', () => {
+    const ids = [...document.querySelectorAll('.pr-checkbox:checked')].map(cb => cb.value);
+    selectedPrsInput.value = ids.join(',');
+    bsModal.show();
+  });
+
+  const confirmBtn = document.getElementById('confirm-create-btn');
+  if (confirmBtn) confirmBtn.addEventListener('click', () => {
+    document.getElementById('remarks_input').value = remarks.value || '';
+    document.getElementById('pr-list-form').submit();
+  });
+});
+</script>
+
 
 <!-- ====================== -->
 <!-- JAVASCRIPT SECTION -->
@@ -290,6 +382,14 @@ document.addEventListener("DOMContentLoaded", () => {
   background-color: #a00000;
   color: #fff;
 }
+
+.table-maroon { background-color: #800000; }
+.text-maroon { color: #800000; }
+.highlight-flash { background-color: #d4edda !important; transition: background-color 1.2s ease-out; }
+
+.btn-maroon { background-color: #800000; color: #fff; }
+.btn-maroon:hover { background-color: #a00000; color: #fff; }
+
 </style>
 
 {% endblock %}
