@@ -207,6 +207,46 @@ function printPreview() {
   .btn, .no-print, .navbar, footer { display: none !important; }
   body { background: white; }
 }
+
+.btn, a.btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.2;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border-width: 1px !important;
+  box-sizing: border-box;
+  height: 44px;
+  min-width: 180px;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+
+/* ✅ Make buttons share equal width per row */
+.no-print {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.no-print .btn {
+  flex: 1 1 200px; /* equal width auto-adjust per row */
+  max-width: 160px;
+}
+
+/* Secondary button consistent height */
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
 </style>
 
 {% endblock %}

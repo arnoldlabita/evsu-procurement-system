@@ -2,7 +2,15 @@
 {% load humanize %}
 
 {% block content %}
-  <h4>RFQ — {{ rfq.purchase_request.pr_number }}</h4>
+  <h4>
+  RFQ —
+  {{ rfq.purchase_request.pr_number|default_if_none:"" }}
+  {% if rfq.consolidated_prs.exists %}
+    {% for pr in rfq.consolidated_prs.all %}
+      {{ pr.pr_number }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  {% endif %}
+</h4>
   <p>RFQ Date: {{ rfq.date }}</p>
 
   <a class="btn btn-maroon" href="{% url 'procurement:add_bid' rfq.id %}">Add Bidder</a>

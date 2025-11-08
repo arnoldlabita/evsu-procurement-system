@@ -80,12 +80,16 @@
   </thead>
   <tbody>
     {% for pr in prs %}
-    <tr id="pr-row-{{ pr.pk }}" class="{% if pr.consolidated_in %}table-secondary{% endif %}">
-      {% if is_procurement %}
-      <td>
-        <input type="checkbox" class="pr-checkbox" value="{{ pr.id }}" {% if pr.consolidated_in %}disabled{% endif %}>
-      </td>
-      {% endif %}
+<tr id="pr-row-{{ pr.pk }}" 
+    class="{% if pr.rfq or pr.consolidated_in %}table-warning{% endif %}"
+    title="{% if pr.rfq or pr.consolidated_in %}Already linked to an RFQ{% endif %}">
+  <td>
+    <input type="checkbox"
+           class="pr-checkbox"
+           value="{{ pr.id }}"
+           {% if pr.rfq or pr.consolidated_in %}disabled{% endif %}>
+  </td>
+
 
       <td>{{ pr.pr_number|default:"Unassigned" }}</td>
       <td>{{ pr.office_section }}</td>
@@ -252,6 +256,9 @@ document.addEventListener("DOMContentLoaded", () => {
 <!-- ====================== -->
 <!-- JAVASCRIPT SECTION -->
 <!-- ====================== -->
+ <!-- ✅ SweetAlert2 Library -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const DEFAULT_STATUS = [
@@ -327,29 +334,98 @@ document.addEventListener("DOMContentLoaded", () => {
     const subSel = document.getElementById(modeSel.dataset.subSelectId);
     const row = document.getElementById(`pr-row-${prId}`);
 
-    modeSel.addEventListener('change', e => {
-      const val = e.target.value;
-      if (val === 'Negotiated Procurement') subSel.style.display = 'block';
-      else { subSel.style.display = 'none'; subSel.value = ''; }
+  modeSel.addEventListener('change', e => {
+    const val = e.target.value;
+    const oldVal = modeSel.dataset.current || '';
+    const prNumber = row.querySelector('td:nth-child(2)').innerText.trim();
 
-      save(`/procurement/update_mode_ajax/${prId}/`, {
-        mode_of_procurement: val,
-        negotiated_type: subSel.value
-      });
+    if (val === oldVal) return; // no change
 
-      const statusSel = document.querySelector(`.status-select[data-pr-id="${prId}"]`);
-      if (statusSel) {
-        populateStatus(statusSel, val, '');
-        flashHighlight(row.querySelector('.status-column'));
+    // Show confirmation before saving
+    Swal.fire({
+      title: 'Confirm Mode Change',
+      html: `Change <b>Mode of Procurement</b> for <b>${prNumber}</b><br>
+            from "<i>${oldVal || 'None'}</i>" to "<i>${val}</i>"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#800000',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, change it',
+    }).then(result => {
+      if (result.isConfirmed) {
+        // Show/hide sub-mode if Negotiated
+        if (val === 'Negotiated Procurement') subSel.style.display = 'block';
+        else { subSel.style.display = 'none'; subSel.value = ''; }
+
+        // Save via AJAX
+        save(`/procurement/update_mode_ajax/${prId}/`, {
+          mode_of_procurement: val,
+          negotiated_type: subSel.value
+        });
+
+        // Update linked status dropdown
+        const statusSel = document.querySelector(`.status-select[data-pr-id="${prId}"]`);
+        if (statusSel) {
+          populateStatus(statusSel, val, '');
+          flashHighlight(row.querySelector('.status-column'));
+        }
+
+        // Remember new mode
+        modeSel.dataset.current = val;
+        Swal.fire({
+          title: 'Updated!',
+          text: 'Mode of Procurement successfully changed.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        // Revert to old value if cancelled
+        modeSel.value = oldVal;
       }
     });
+  });
 
-    subSel.addEventListener('change', e => {
-      save(`/procurement/update_mode_ajax/${prId}/`, {
-        mode_of_procurement: modeSel.value,
-        negotiated_type: subSel.value
-      });
+  subSel.addEventListener('change', e => {
+    const newValue = subSel.value;
+    const oldValue = subSel.dataset.current || '';
+    const prNumber = row.querySelector('td:nth-child(2)').innerText.trim();
+
+    if (newValue === oldValue) return; // no change
+
+    Swal.fire({
+      title: 'Confirm Sub-Mode Change',
+      html: `Change <b>Negotiated Procurement Type</b> for <b>${prNumber}</b><br>
+            from "<i>${oldValue || 'None'}</i>" to "<i>${newValue}</i>"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#800000',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, change it',
+    }).then(result => {
+      if (result.isConfirmed) {
+        // Save via AJAX
+        save(`/procurement/update_mode_ajax/${prId}/`, {
+          mode_of_procurement: modeSel.value,
+          negotiated_type: newValue
+        });
+
+        // Update stored value
+        subSel.dataset.current = newValue;
+
+        Swal.fire({
+          title: 'Updated!',
+          text: 'Negotiated Procurement Type successfully changed.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        // Revert to old value if cancelled
+        subSel.value = oldValue;
+      }
     });
+  });
   });
 
   document.querySelectorAll('.status-select').forEach(sel => {
@@ -360,8 +436,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sel.addEventListener('change', e => {
       const newStatus = e.target.value;
-      save(`/procurement/update_status_ajax/${prId}/`, { status: newStatus });
-      flashHighlight(sel.closest('.status-column'));
+      const currentStatus = sel.dataset.current || '';
+
+      if (!newStatus || newStatus === currentStatus) return; // no change or blank
+
+      Swal.fire({
+        title: 'Confirm Status Change',
+        text: `Change status of PR-${prId} from "${currentStatus || 'None'}" to "${newStatus}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#800000',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, change it',
+      }).then(result => {
+        if (result.isConfirmed) {
+          save(`/procurement/update_status_ajax/${prId}/`, { status: newStatus });
+          flashHighlight(sel.closest('.status-column'));
+          sel.dataset.current = newStatus;
+          Swal.fire({
+            title: 'Updated!',
+            text: 'Status successfully changed.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        } else {
+          sel.value = currentStatus; // revert to old value
+        }
+      });
     });
   });
 });
@@ -390,6 +492,9 @@ document.addEventListener("DOMContentLoaded", () => {
 .btn-maroon { background-color: #800000; color: #fff; }
 .btn-maroon:hover { background-color: #a00000; color: #fff; }
 
+.table-warning {
+  background-color: #fff8e1 !important;
+}
 </style>
 
 {% endblock %}

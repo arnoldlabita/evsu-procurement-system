@@ -228,7 +228,7 @@ class PRItem(models.Model):
         return f"{self.description} ({self.unit})"
 
 class RequestForQuotation(TimestampedModel):
-    rfq_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    rfq_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
     purchase_request = models.OneToOneField(PurchaseRequest, related_name="rfq", on_delete=models.CASCADE, null=True, blank=True)
     consolidated_prs = models.ManyToManyField(PurchaseRequest, related_name="rfqs", blank=True)
     date = models.DateField(default=timezone.now)

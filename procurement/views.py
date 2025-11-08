@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.views.generic import DetailView
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -31,19 +31,20 @@ from .forms import (
     RequisitionerPRForm, ProcurementStaffPRForm,
     PRItemFormSet, SupplierForm,
     RFQForm, APRForm, AOQLineFormSet, PurchaseOrderForm,
-    AssignPRNumberForm, BidForm, BidLineForm, BidLineFormSet
+    AssignPRNumberForm, BidForm, BidLineForm, BidLineFormSet, RFQConsolidationLog
 )
 
 def rfq_pr_items(rfq):
-    """
-    Return queryset/list of PRItem objects that belong to the RFQ.
-    Works for both single-PR RFQs (rfq.purchase_request) and consolidated (rfq.consolidated_prs).
-    """
-    if rfq.purchase_request:
-        return rfq.purchase_request.items.all()
-    # For consolidated, aggregate items from all linked PRs
-    prs = rfq.consolidated_prs.all()
-    return PRItem.objects.filter(purchase_request__in=prs).select_related('purchase_request')
+    """Return all PRItems linked to this RFQ, whether single or consolidated."""
+    if hasattr(rfq, "consolidated_prs") and rfq.consolidated_prs.exists():
+        # ✅ Consolidated RFQ: many-to-many relationship used
+        return PRItem.objects.filter(purchase_request__in=rfq.consolidated_prs.all())
+    elif hasattr(rfq, "purchase_request") and rfq.purchase_request:
+        # ✅ Regular RFQ: one-to-one (or foreign key) used
+        return PRItem.objects.filter(purchase_request=rfq.purchase_request)
+    else:
+        return PRItem.objects.none()
+
 
 
 # -----------------------
@@ -1169,10 +1170,10 @@ def aoq_export_csv(request, aoq_id):
 def consolidate_to_rfq(request):
     """
     Create a consolidated RFQ from multiple PRs (selected_prs comes as CSV of ids).
-    This will:
-      - create RequestForQuotation (purchase_request left null),
-      - add selected PRs into rfq.consolidated_prs,
-      - set each PR.consolidated_in to the new RFQ (so template's pr.consolidated_in works).
+    - RFQ number is based on the first selected PR number.
+    - Selected PRs are linked to the created RFQ.
+    - Each PR.consolidated_in is updated.
+    - Consolidation is logged.
     """
     selected = request.POST.get("selected_prs", "")
     remarks = request.POST.get("remarks", "") or ""
@@ -1188,38 +1189,66 @@ def consolidate_to_rfq(request):
         messages.error(request, "No valid Purchase Requests found.")
         return redirect("procurement:pr_list")
 
-    # Optional validation: ensure compatible mode_of_procurement (example)
-    # modes = set(pr.mode_of_procurement for pr in prs if pr.mode_of_procurement)
-    # if len(modes) > 1:
-    #     messages.error(request, "Selected PRs have different modes of procurement and cannot be consolidated.")
-    #     return redirect("procurement:pr_list")
+    # ✅ Use the first PR as the reference for RFQ number
+    first_pr = prs.first()
+    rfq_number = f"RFQ-{first_pr.pr_number}"
 
-    rfq_number = "CONSOL-" + "-".join([pr.pr_number for pr in prs if pr.pr_number])[:150]  # simple approach
+    # ✅ Prevent duplicate RFQ numbers
+    if RequestForQuotation.objects.filter(rfq_number=rfq_number).exists():
+        messages.error(request, f"RFQ for {first_pr.pr_number} already exists.")
+        return redirect("procurement:pr_list")
 
+    # ✅ Create the RFQ
     rfq = RequestForQuotation.objects.create(
         rfq_number=rfq_number,
         created_by=request.user,
-        remarks=remarks
+        remarks=remarks,
     )
 
+    # ✅ Link PRs to the RFQ
     rfq.consolidated_prs.set(prs)
     rfq.save()
 
     for pr in prs:
         pr.consolidated_in = rfq
         pr.save(update_fields=["consolidated_in"])
-        # Log consolidation action
+
+    # ✅ Optional: Log the consolidation if the model exists
+    try:
         log = RFQConsolidationLog.objects.create(
             rfq=rfq,
             consolidated_by=request.user,
             remarks=remarks,
         )
         log.consolidated_prs.set(prs)
+    except NameError:
+        # Skip logging if model not defined
+        pass
 
-    messages.success(request, f"Consolidated RFQ {rfq.rfq_number} created with {prs.count()} PR(s).")
+    messages.success(request, f"RFQ {rfq.rfq_number} created from {prs.count()} PR(s).")
     return redirect("procurement:rfq_process", pk=rfq.pk)
+
 
 @login_required
 def rfq_detail(request, pk):
     rfq = get_object_or_404(RequestForQuotation, pk=pk)
     return render(request, "procurement/rfq_detail.html", {"rfq": rfq})
+
+@login_required
+def pr_list(request):
+    pr_queryset = PurchaseRequest.objects.all()
+
+    # Detect if PR is part of any RFQ (either one-to-one or many-to-one)
+    rfq_exists_subquery = RequestForQuotation.objects.filter(
+        consolidated_prs=OuterRef('pk')
+    )
+
+    pr_queryset = pr_queryset.annotate(
+        has_rfq=Exists(RequestForQuotation.objects.filter(purchase_request=OuterRef('pk'))),
+        in_consolidated_rfq=Exists(rfq_exists_subquery)
+    )
+
+    context = {
+        'pr_list': pr_queryset,
+    }
+    return render(request, 'procurement/pr_list.html', context)

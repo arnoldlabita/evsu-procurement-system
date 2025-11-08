@@ -1,34 +1,57 @@
 {% extends "procurement/base.html" %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">Requests for Quotation</h3>
-  <a class="btn btn-maroon" href="{% url 'procurement:pr_list' %}">Back to PRs</a>
+  <h3 class="mb-0 text-maroon fw-bold">Requests for Quotation</h3>
+  <a class="btn btn-maroon" href="{% url 'procurement:pr_list' %}">← Back to PRs</a>
 </div>
 
-<table class="table table-striped">
-  <thead>
+<table class="table table-bordered align-middle shadow-sm">
+  <thead class="table-maroon text-white">
     <tr>
-      <th>PR No.</th>
-      <th>PR Date</th>
+      <th>PR No.(s)</th>
+      <th>Requesting Office(s)</th>
       <th>RFQ Date</th>
       <th>Bidders</th>
-      <th>Actions</th>
+      <th class="text-center">Actions</th>
     </tr>
   </thead>
   <tbody>
     {% for rfq in rfqs %}
     <tr>
-      <td>{{ rfq.purchase_request.pr_number }}</td>
-      <td>{{ rfq.purchase_request.pr_date|date:"M d, Y" }}</td>
+    <td>
+      {% if rfq.consolidated_prs.exists %}
+        {% for pr in rfq.consolidated_prs.all %}
+          <div>{{ pr.pr_number }}</div>
+        {% endfor %}
+      {% elif rfq.purchase_request %}
+        {{ rfq.purchase_request.pr_number }}
+      {% else %}
+        <span class="text-muted">—</span>
+      {% endif %}
+    </td>
+
+    <td>
+      {% if rfq.consolidated_prs.exists %}
+        {% for pr in rfq.consolidated_prs.all %}
+          <div>{{ pr.office_section }}</div>
+        {% endfor %}
+      {% elif rfq.purchase_request %}
+        {{ rfq.purchase_request.office_section }}
+      {% else %}
+        <span class="text-muted">—</span>
+      {% endif %}
+    </td>
+
       <td>{{ rfq.date|date:"M d, Y" }}</td>
       <td>{{ rfq.bids.count }}</td>
-      <td>
+
+      <td class="text-center">
         <a class="btn btn-sm btn-outline-maroon" href="{% url 'procurement:rfq_process' rfq.pk %}">Process</a>
         <a class="btn btn-sm btn-outline-secondary" href="{% url 'procurement:rfq_preview' rfq.pk %}">Preview</a>
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="6" class="text-center text-muted">No RFQs found.</td></tr>
+    <tr><td colspan="5" class="text-center text-muted">No RFQs found.</td></tr>
     {% endfor %}
   </tbody>
 </table>

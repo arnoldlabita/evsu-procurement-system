@@ -1,28 +1,8 @@
 {% extends "procurement/base.html" %}
+{% load static %}
 {% block content %}
 
-<style>
-  @media print {
-    .no-print {
-      display: none;
-    }
-    body {
-      font-family: "Times New Roman", serif;
-      font-size: 12pt;
-    }
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .table th, .table td {
-      border: 1px solid #000;
-      padding: 5px;
-    }
-  }
-</style>
-
 <div class="container mt-4">
-
   <div class="text-center mb-3">
     <p>
       <strong>Republic of the Philippines</strong><br>
@@ -34,39 +14,73 @@
   <h4 class="text-center mb-4">REQUEST FOR QUOTATION</h4>
 
   <p><strong>Date:</strong> {{ rfq.date|date:"F d, Y" }}</p>
-  <p><strong>Based on PR No.:</strong> {{ rfq.purchase_request.pr_number }}</p>
 
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>No</th>
-        <th>Item Description</th>
-        <th>Qty</th>
-        <th>Unit</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in rfq.purchase_request.items.all %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ item.description }}</td>
-        <td>{{ item.quantity }}</td>
-        <td>{{ item.unit }}</td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="4" class="text-center">No items found for this PR.</td>
-      </tr>
+  {% if rfq.purchase_request %}
+    <p class="text-muted">
+      Based on PR No.: <strong>{{ rfq.purchase_request.pr_number }}</strong>
+    </p>
+  {% elif rfq.consolidated_prs.exists %}
+    <p class="text-muted">
+      Based on PR Nos.:
+      {% for pr in rfq.consolidated_prs.all %}
+        <strong>{{ pr.pr_number }}</strong>{% if not forloop.last %}, {% endif %}
       {% endfor %}
-    </tbody>
-  </table>
+    </p>
+  {% endif %}
 
-  <div class="text-center mt-4">
-    <button onclick="window.print()" class="btn btn-primary no-print">
-      Print RFQ
-    </button>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle">
+      <thead class="table-light text-center">
+        <tr>
+          <th style="width:8%">No.</th>
+          <th style="width:57%; text-align:left;">Item Description</th>
+          <th style="width:10%">Qty</th>
+          <th style="width:10%">Unit</th>
+          <th style="width:15%">Unit Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rfq.purchase_request %}
+          <!-- Single PR: show items directly -->
+          {% for item in rfq.purchase_request.items.all %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td class="text-start">{{ item.description }}</td>
+            <td class="text-center">{{ item.quantity }}</td>
+            <td class="text-center">{{ item.unit }}</td>
+            <td></td>
+          </tr>
+          {% endfor %}
+
+        {% elif rfq.consolidated_prs.exists %}
+          <!-- Multiple PRs: show each PR group -->
+          {% for pr in rfq.consolidated_prs.all %}
+            <tr class="table-secondary fw-bold">
+              <td colspan="5">PR No. {{ pr.pr_number }}</td>
+            </tr>
+            {% for item in pr.items.all %}
+            <tr>
+              <td class="text-center">{{ forloop.counter }}</td>
+              <td class="text-start">{{ item.description }}</td>
+              <td class="text-center">{{ item.quantity }}</td>
+              <td class="text-center">{{ item.unit }}</td>
+              <td></td>
+            </tr>
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">No items found for this RFQ.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
   </div>
 
+  <div class="text-center mt-4 no-print">
+    <button onclick="window.print()" class="btn btn-maroon">Print RFQ</button>
+    <a href="{% url 'procurement:rfq_list' %}" class="btn btn-outline-secondary">Back to RFQs</a>
+  </div>
 </div>
 
 {% endblock %}

@@ -4,7 +4,7 @@ from django.forms import inlineformset_factory
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
-    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine
+    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine, RFQConsolidationLog
 )
 
 # -------------------------
@@ -172,25 +172,19 @@ class BidForm(forms.ModelForm):
             raise ValidationError("This supplier already has a bid for this RFQ.")
         return supplier
 
-from django import forms
-from .models import BidLine, PRItem, Bid
-
 class BidLineForm(forms.ModelForm):
     class Meta:
         model = BidLine
         fields = ["pr_item", "offer", "unit_price", "compliant"]
         widgets = {
-            # Make PR item appear as static text (read-only, not dropdown)
             "pr_item": forms.TextInput(attrs={
                 "class": "form-control-plaintext form-control-sm",
                 "readonly": True
             }),
-            # Add Offer text box
             "offer": forms.TextInput(attrs={
                 "class": "form-control form-control-sm",
                 "placeholder": "Enter offer (optional)"
             }),
-            # Make Unit Price optional, no default prompt
             "unit_price": forms.NumberInput(attrs={
                 "class": "form-control form-control-sm",
                 "placeholder": ""
@@ -200,17 +194,21 @@ class BidLineForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Make 'unit_price' optional
         self.fields["unit_price"].required = False
 
-        # If bound to a Bid, set PR items properly
+        # ✅ Handle both single-PR and consolidated RFQs
         if self.instance and getattr(self.instance, "bid", None):
             rfq = getattr(self.instance.bid, "rfq", None)
             if rfq:
-                self.fields["pr_item"].queryset = PRItem.objects.filter(
-                    purchase_request=rfq.purchase_request
-                )
+                if rfq.consolidated_prs.exists():
+                    self.fields["pr_item"].queryset = PRItem.objects.filter(
+                        purchase_request__in=rfq.consolidated_prs.all()
+                    )
+                elif rfq.purchase_request:
+                    self.fields["pr_item"].queryset = PRItem.objects.filter(
+                        purchase_request=rfq.purchase_request
+                    )
+
 
 
 BidLineFormSet = inlineformset_factory(
