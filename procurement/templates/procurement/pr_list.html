@@ -67,28 +67,31 @@
   <thead class="table-maroon text-white">
     <tr>
       <tr>
-      {% if is_procurement %}
-        <th style="width:30px;"><input type="checkbox" id="select-all" /></th>
+    {% if is_procurement %}
+      <th style="width:30px;"><input type="checkbox" id="select-all" /></th>
+    {% endif %}
+    <th>PR No.</th>
+    <th>Requesting Office</th>
+    <th>Status</th>
+    <th>Mode of Procurement</th>
+    <th>Last Update</th>
+    <th class="text-center">Actions</th>
+  </tr>
+</thead>
+<tbody>
+  {% for pr in prs %}
+  {% if is_procurement %}
+    <tr id="pr-row-{{ pr.pk }}"
+        class="{% if pr.rfq or pr.consolidated_in %}{% endif %}"
+        title="{% if pr.rfq or pr.consolidated_in %}Already linked to an RFQ{% endif %}">
+      
+        <td>
+          <input type="checkbox"
+                 class="pr-checkbox"
+                 value="{{ pr.id }}"
+                 {% if pr.rfq or pr.consolidated_in %}disabled{% endif %}>
+        </td>
       {% endif %}
-      <th>PR No.</th>
-      <th>Requesting Office</th>
-      <th>Status</th>
-      <th>Mode of Procurement</th>
-      <th>Last Update</th>
-      <th class="text-center">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for pr in prs %}
-<tr id="pr-row-{{ pr.pk }}" 
-    class="{% if pr.rfq or pr.consolidated_in %}table-warning{% endif %}"
-    title="{% if pr.rfq or pr.consolidated_in %}Already linked to an RFQ{% endif %}">
-  <td>
-    <input type="checkbox"
-           class="pr-checkbox"
-           value="{{ pr.id }}"
-           {% if pr.rfq or pr.consolidated_in %}disabled{% endif %}>
-  </td>
 
 
       <td>{{ pr.pr_number|default:"Unassigned" }}</td>

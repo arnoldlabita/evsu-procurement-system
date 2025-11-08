@@ -115,15 +115,16 @@
     <p class="mb-0"><strong>Last Update:</strong> {{ pr.last_update|localtime|date:"M d, Y h:i A" }}</p>
   </div>
   {% endif %}
-</div>
-
-{% if pr.consolidated_in %}
+  {% if pr.consolidated_in %}
   <p><strong>Consolidated in RFQ:</strong>
      <a href="{% url 'procurement:rfq_detail' pr.consolidated_in.id %}">
        {{ pr.consolidated_in.rfq_number }}
      </a>
   </p>
 {% endif %}
+</div>
+
+
 
 <!-- ✅ Modal for Document Preview -->
 <div class="modal fade" id="docPreviewModal" tabindex="-1" aria-labelledby="docPreviewLabel" aria-hidden="true">

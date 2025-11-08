@@ -1252,3 +1252,4 @@ def pr_list(request):
         'pr_list': pr_queryset,
     }
     return render(request, 'procurement/pr_list.html', context)
+
