@@ -194,7 +194,7 @@ class PRItem(models.Model):
         ("kg", "Kilogram"), ("km", "Kilometer"), ("length", "Length"), ("liter", "Liter"),
         ("lot", "Lot"), ("m", "Meter"), ("mg", "Milligram"), ("ml", "Milliliter"),
         ("mm", "Millimeter"), ("month", "Month"), ("pad", "Pad"), ("pail", "Pail"),
-        ("pair", "Pair"), ("pack", "Pack"), ("packet", "Packet"), ("panel", "Panel"),
+        ("pair", "Pair"), ("pack", "Pack"), ("packet", "Packet"), ("panel", "Panel"), ("pax", "Pax"),
         ("pc", "Piece"), ("plate", "Plate"), ("pot", "Pot"), ("pouch", "Pouch"),
         ("quart", "Quart"), ("ream", "Ream"), ("roll", "Roll"), ("sack", "Sack"),
         ("sachet", "Sachet"), ("set", "Set"), ("sheet", "Sheet"),

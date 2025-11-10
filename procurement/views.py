@@ -303,8 +303,20 @@ def assign_pr_number(request, pk):
     else:
         form = AssignPRNumberForm(instance=pr)
 
-    return render(request, "procurement/assign_pr_number.html", {"form": form, "pr": pr})
+    grand_total = sum(
+        (item.quantity or 0) * (item.unit_cost or 0)
+        for item in pr.items.all()
+    )
 
+    return render(
+        request,
+        "procurement/assign_pr_number.html",
+        {
+            "form": form,
+            "pr": pr,
+            "grand_total": grand_total,
+        }
+    )
 
 # -----------------------
 # SUPPLIERS
@@ -1253,3 +1265,26 @@ def pr_list(request):
     }
     return render(request, 'procurement/pr_list.html', context)
 
+from math import ceil
+
+def purchase_request_view(request, pk):
+    pr = get_object_or_404(PurchaseRequest, pk=pk)
+    items = list(pr.items.all())
+    items_per_page = 20
+    pages = [
+        items[i:i + items_per_page]
+        for i in range(0, len(items), items_per_page)
+    ]
+
+    # Calculate subtotals
+    page_subtotals = [
+        sum(item.total_cost for item in page)
+        for page in pages
+    ]
+    grand_total = sum(page_subtotals)
+
+    return render(request, 'purchase_request.html', {
+        'pr': pr,
+        'pages': zip(pages, page_subtotals),
+        'grand_total': grand_total,
+    })

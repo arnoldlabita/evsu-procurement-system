@@ -6,81 +6,63 @@
 <div class="rfq-wrap">
   <header class="rfq-header">
     <div class="rfq-left">
-<img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo" style="height:50px;">
+      <img src="{% static 'procurement/evsu-logo.png' %}" alt="EVSU Logo" style="height:50px;">
     </div>
-
-<div class="rfq-left-align">
-  <div class="rfq-right">
-    <div class="small">Standard Form Number: SF-GOOD-60</div>
-    <div class="small">(Revised May 24, 2004)</div>
-    <div class="small">Standard Form Title: Request for Quotation</div>
-  </div>
-</div>
+    <div class="rfq-right">
+      <div class="small">Standard Form Number: SF-GOOD-60</div>
+      <div class="small">(Revised May 24, 2004)</div>
+      <div class="small">Standard Form Title: Request for Quotation</div>
+    </div>
   </header>
 
-<div class="rfq-banner">
-  <h3 class="rfq-title"><strong>REQUEST FOR QUOTATION</strong></h3>
-</div>
+  <div class="rfq-banner">
+    <h3 class="rfq-title">REQUEST FOR QUOTATION</h3>
+  </div>
 
-  <hr class="rfq-divider" />
-<div class="rfq-meta-wrapper">
-  <table class="no-border funding-section">
-    <tr>
-    <td style="width:30%; vertical-align:top;">
-      <div class="meta-block">
-        <div class="small">Date: {{ rfq.date|date:"F d, Y" }}</div>
-        <br>
-        <div class="small">Quotation No(s): <br>
-          {% if rfq.purchase_request %}
-            <strong>{{ rfq.purchase_request.pr_number }}</strong>
-          {% elif rfq.consolidated_prs.exists %}
-            {% for pr in rfq.consolidated_prs.all %}
-              <strong>{{ pr.pr_number }}</strong>{% if not forloop.last %}<br> {% endif %}
-            {% endfor %}
-          {% endif %}
-        </div>
-      </div>
-    </td>
-    </tr>
-  </table>
-</div>
-
-
-<div class="company-info-wrapper">
-  <div class="company-info">
+<div class="rfq-info-block">
+    <div class="company-info">
     <div>_________________________</div>
-    <div>Company Name</div>
-    <br>
+    <div>Company Name</div><br>
     <div>_________________________</div>
     <div>Address</div>
   </div>
+  
+  <div class="meta-block">
+    <div class="small">Date: {{ rfq.date|date:"F d, Y" }}</div>
+    <div class="small">Quotation No(s):</div>
+    {% if rfq.purchase_request %}
+      <strong>{{ rfq.purchase_request.pr_number }}</strong>
+    {% elif rfq.consolidated_prs.exists %}
+      {% for pr in rfq.consolidated_prs.all %}
+        <strong>{{ pr.pr_number }}</strong>{% if not forloop.last %}{% endif %}
+      {% endfor %}
+    {% endif %}
+  </div>
 </div>
-
 <br>
-  <div class="small">
+  <div class="small instructions">
     Please quote your lowest price on the item/s listed below, subject to the General Conditions on the last page,
     stating the shortest time of delivery and submit your quotation duly signed by your representative to the office
     of the Chairman, Bids and Awards Committee at EVSU Tacloban City not later than <strong>3 cd</strong> from the above date.
   </div>
 
-<div class="signature-block">
-  <p style="margin:0; font-weight:bold; text-decoration:underline;">MARTINA B. ROSALES</p>
-  <p style="margin:0;">Head, Procurement Unit</p>
-</div>
+  <div class="signature-block">
+    <p><strong><u>MARTINA B. ROSALES</u></strong></p>
+    <p>Head, Procurement Unit</p>
+  </div>
 
-  <div class="small">
+  <div class="notes">
     <strong>NOTE:</strong>
     <ol>
       <li>ALL ENTRIES MUST BE TYPEWRITTEN.</li>
       <li>DELIVERY PERIOD WITHIN THIRTY (30) CALENDAR DAYS.</li>
-      <li>WARRANTY SHALL BE FOR A PERIOD OF SIX (6) MONTHS FOR SUPPLIES &amp; MATERIALS, ONE (1) YEAR FOR EQUIPMENT.</li>
+      <li>WARRANTY SHALL BE FOR A PERIOD OF SIX (6) MONTHS FOR SUPPLIES & MATERIALS, ONE (1) YEAR FOR EQUIPMENT.</li>
       <li>PRICE VALIDITY SHALL BE FOR A PERIOD OF THREE (3) CALENDAR DAYS.</li>
       <li>G-EPS REGISTRATION CERTIFICATE SHALL BE ATTACHED UPON SUBMISSION OF THE QUOTATION.</li>
       <li>BIDDERS SHALL SUBMIT ORIGINAL BROCHURES SHOWING CERTIFICATIONS OF THE PRODUCT BEING OFFERED.</li>
       <li>This project is per item.</li>
     </ol>
   </div>
-
 
   <div class="table-responsive">
     <table class="table table-sm table-bordered align-middle">
@@ -96,20 +78,6 @@
       <tbody>
         {% if rfq.purchase_request %}
           {% for item in rfq.purchase_request.items.all %}
-          <tr>
-            <td class="text-center">{{ forloop.counter }}</td>
-            <td>{{ item.description }}</td>
-            <td class="text-center">{{ item.quantity }}</td>
-            <td class="text-center">{{ item.unit }}</td>
-            <td></td>
-          </tr>
-          {% endfor %}
-        {% elif rfq.consolidated_prs.exists %}
-          {% for pr in rfq.consolidated_prs.all %}
-            <tr class="table-secondary fw-bold">
-              <td colspan="5">PR No. {{ pr.pr_number }}</td>
-            </tr>
-            {% for item in pr.items.all %}
             <tr>
               <td class="text-center">{{ forloop.counter }}</td>
               <td>{{ item.description }}</td>
@@ -117,6 +85,20 @@
               <td class="text-center">{{ item.unit }}</td>
               <td></td>
             </tr>
+          {% endfor %}
+        {% elif rfq.consolidated_prs.exists %}
+          {% for pr in rfq.consolidated_prs.all %}
+            <tr class="table-secondary fw-bold">
+              <td colspan="5">PR No. {{ pr.pr_number }}</td>
+            </tr>
+            {% for item in pr.items.all %}
+              <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td>{{ item.description }}</td>
+                <td class="text-center">{{ item.quantity }}</td>
+                <td class="text-center">{{ item.unit }}</td>
+                <td></td>
+              </tr>
             {% endfor %}
           {% endfor %}
         {% else %}
@@ -124,34 +106,34 @@
         {% endif %}
       </tbody>
     </table>
-
-{% if rfq.purchase_request %}
-  <div style="margin-top:5px;">
-    Purpose: <u>{{ rfq.purchase_request.purpose }}</u>
-  </div>
-{% elif rfq.consolidated_prs.exists %}
-  {% for pr in rfq.consolidated_prs.all %}
-    <div style="margin-top:5px;">
-      <strong>PR No: {{ pr.pr_number }}</strong><br>
-      Purpose: <u>{{ pr.purpose }}</u>
+      {% if rfq.purchase_request %}
+    <div class="purpose">
+      Purpose: <u>{{ rfq.purchase_request.purpose }}</u>
     </div>
-  {% endfor %}
-{% endif %}
+  {% elif rfq.consolidated_prs.exists %}
+    {% for pr in rfq.consolidated_prs.all %}
+      <div class="purpose">
+        <strong>PR No: {{ pr.pr_number }}</strong><br>
+        Purpose: <u>{{ pr.purpose }}</u>
+      </div>
+    {% endfor %}
+  {% endif %}
   </div>
 
-<div class="rfq-details-wrapper">
-  <section class="rfq-details text-start">
-    <p>Brand and Model&nbsp;: ___________________________</p>
-    <p>Delivery Period&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
-    <p>Warranty&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
-    <p>Price Validity&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
-  </section>
-</div>
-<br>
-  <div>
-    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;I hereby certify that I am in a position to furnish the above articles in quantities above stated except those marked “None”.
-    The terms and conditions specified above are hereby accepted. The quantities shown and prices as quoted above are hereby offered.</p>
+
+
+  <div class="rfq-details-wrapper">
+    <section class="rfq-details">
+      <p>Brand and Model&nbsp;: ___________________________</p>
+      <p>Delivery Period&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
+      <p>Warranty&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
+      <p>Price Validity&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ___________________________</p>
+    </section>
   </div>
+
+  <div class="certification">
+    <p>I hereby certify that I am in a position to furnish the above articles in quantities above stated except those marked “None”.
+The terms and conditions specified above are hereby accepted. The quantities shown and prices as quoted above are hereby offered.</p>
 
   <div class="sig-block">
     <div class="sig">
@@ -164,98 +146,50 @@
       <div class="line"></div>
       <div class="small">Signature over Printed Name</div>
       <div class="line"></div>
-      <div class="small">Tel. No. / Cellphone No.:</div>
-      <div class="small">Email Address:</div>
+      <div class="small">Tel. No. / Cellphone No.</div>
+      <div class="small">Email Address</div>
     </div>
-</div>
-
-  <div class="page-footer text-end small muted">
+  </div>
+    <div class="page-footer text-end small muted">
     Page 1 of 1
   </div>
+</div>
 
-  <div class="actions">
-    <button type="button" onclick="window.print()">🖨 Print</button>
-  </div>
+<div class="actions">
+  <button type="button" onclick="window.history.back()">← Back</button>
+  <button type="button" onclick="window.print()">🖨 Print</button>
 </div>
 
 <style>
-:root{
-  --maroon:#7a0b13;
-  --muted:#555;
-  --page-width:900px;
+:root {
+  --maroon: #7a0b13;
+  --muted: #555;
+  --page-width: 900px;
 }
-.rfq-wrap{max-width:var(--page-width);margin:0 auto;padding:25px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);}
-.rfq-header{display:flex;justify-content:space-between;align-items:flex-start;}
-.small{font-size:12px;}
-.muted{color:var(--muted);}
-hr.rfq-divider{border:none;border-top:2px solid var(--maroon);margin:10px 0;}
-.rfq-title{color:var(--maroon);margin:0;text-align:center;font-size:20px;letter-spacing:.5px;}
-.rfq-sub{text-align:center;font-size:12px;color:var(--muted);}
-.meta{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;}
-.field{flex:1;min-width:180px;}
-label{display:block;font-size:12px;color:var(--muted);}
-.value{border-bottom:1px solid #ccc;font-size:12px;min-height:18px;padding:2px 0;}
-.instructions{font-size:13px;color:#111;margin-bottom:10px;}
-.table-responsive{margin-top:8px;}
-.table th,.table td{border:1px solid #ccc;padding:6px;font-size:13px;}
-.purpose{margin-top:10px;}
-.rfq-details p{margin:2px 0;font-size:13px;}
-.certification p{font-size:13px;margin:2px 0;}
-.sig-block{display:flex;gap:10px;margin-top:30px;align-items:center;}
-.sig{flex:1;text-align:center;}
-.sig .line{margin-top:36px;border-top:1px solid #999;padding-top:4px;}
-.small-label{font-size:12px;color:var(--muted);}
-.notes{margin-top:14px;font-size:13px;}
-.notes ol{padding-left:1.2rem;margin:6px 0;}
-.page-footer{margin-top:16px;}
-.actions{text-align:right;margin-top:16px;}
-button{padding:6px 12px;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer;}
-@media print{
-  body{background:#fff;}
-  .rfq-wrap{box-shadow:none;margin:0;padding:15mm;}
-  button{display:none;}
-}
+
 body {
   font-family: Arial, sans-serif;
   font-size: 12px;
   color: #000;
-}
-.rfq-details-wrapper {
-  width: 50%;
-  margin-left: auto;
-  margin-right: 0;
-  text-align: left;
-}
-.signature-block {
-  width: 30%;
-  margin-left: auto;
-  text-align: left;
-  line-height: 1.3;
-  margin-top: 10px;
-}
-.company-info-wrapper {
-  width: 20%;
-  margin-right: auto;
+  background: #f8f8f8;
 }
 
-.company-info {
-  text-align: center;
-  font-size: 12px; /* Matches your .small class */
+.rfq-wrap {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 25px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
-.rfq-meta-wrapper {
-  width: 30%;
-  margin-left: auto;
-}
-.meta-block {
+
+.rfq-header {
   display: flex;
-  flex-direction: column;
-  align-items: left;
-  justify-content: left;
-  height: 100%;
-  text-align: left;
+  justify-content: space-between;
+  align-items: flex-start;
 }
+
 .rfq-banner {
-  background-color: #7a0b13; /* Maroon */
+  background-color: var(--maroon);
   width: 100%;
   padding: 4px 0;
   text-align: center;
@@ -267,14 +201,209 @@ body {
   font-size: 16px;
   letter-spacing: 0.5px;
 }
+
+.rfq-sub {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+hr.rfq-divider {
+  border: none;
+  border-top: 2px solid var(--maroon);
+  margin: 10px 0;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.small-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.meta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  height: 100%;
+  text-align: left;
+}
+
+.rfq-meta-wrapper {
+  width: 30%;
+  margin-left: auto;
+}
+
+.rfq-details-wrapper {
+  width: 50%;
+  margin-left: auto;
+  margin-right: 0;
+  text-align: left;
+}
+
 .rfq-details p {
   margin: 0;
   line-height: 1.5;
+  font-size: 13px;
 }
+
+.instructions {
+  font-size: 13px;
+  color: #111;
+  margin-bottom: 10px;
+}
+
+.table-responsive {
+  margin-top: 8px;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  font-size: 13px;
+}
+
+.purpose {
+  margin-top: 10px;
+}
+
 .certification {
   text-align: justify;
   margin: 20px auto;
   width: 90%;
+}
+
+.certification p {
+  font-size: 13px;
+  margin: 2px 0;
+  text-indent: 2em;
+  line-height: 1.5;
+}
+
+.sig-block {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+  align-items: center;
+}
+
+.sig {
+  flex: 1;
+  text-align: center;
+}
+
+.sig .line {
+  margin-top: 36px;
+  border-top: 1px solid #999;
+  padding-top: 4px;
+}
+
+.signature-block {
+  width: 30%;
+  margin-left: auto;
+  text-align: left;
+  line-height: .1;
+  margin-top: 2px;
+}
+
+.company-info-wrapper {
+  width: 20%;
+  margin-right: auto;
+}
+
+.company-info {
+  text-align: center;
+  font-size: 12px;
+}
+
+.notes {
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.notes ol {
+  padding-left: 1.2rem;
+  margin: 6px 0;
+}
+
+.page-footer {
+  margin-top: 16px;
+}
+
+.actions {
+  text-align: right;
+  margin-top: 16px;
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 0.5in 0.75in;
+    }
+
+    html, body {
+      background: #fff !important;
+      color: #000 !important;
+      margin: 0;
+      padding: 0;
+      font-size: 13px !important;
+    }
+  .rfq-wrap {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  button {
+    display: none;
+  }
+}
+.rfq-info-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 300px;
+  margin-top: 20px;
+}
+
+.rfq-info-block .meta-block,
+.rfq-info-block .company-info {
+  width: 48%;
+  font-size: 12px;
+}
+#rfqPreviewBody .rfq-wrap {
+  max-width: 900px;
+  margin: 5in;
+}
+button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 </style>

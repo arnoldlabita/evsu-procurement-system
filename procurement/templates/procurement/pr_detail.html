@@ -33,15 +33,15 @@
   </p>
 
   <div class="table-responsive">
-    <table class="table table-bordered align-middle">
+    <table class="table table-bordered align-middle" style="table-layout: auto;">
       <thead class="table-maroon text-white text-center">
         <tr>
-          <th>Stock No.</th>
-          <th>Unit</th>
-          <th>Item Description</th>
-          <th>Qty</th>
-          <th class="text-end">Unit Cost</th>
-          <th class="text-end">Total Cost</th>
+            <th>Stock No.</th>
+            <th>Unit</th>
+            <th>Item Description</th>
+            <th>Qty</th>
+            <th class="text-end">Unit Cost</th>
+            <th class="text-end">Total Cost</th>
         </tr>
       </thead>
       <tbody>
@@ -49,7 +49,7 @@
           <tr>
             <td class="text-center">{{ forloop.counter }}</td>
             <td class="text-center">{{ item.unit }}</td>
-            <td>{{ item.description }}</td>
+            <td class="preserve-whitespace">{{ item.description }}</td>
             <td class="text-center">{{ item.quantity|floatformat:0|intcomma }}</td>
             <td class="text-end">{{ item.unit_cost|floatformat:2|intcomma }}</td>
             <td class="text-end">{{ item.total_cost|floatformat:2|intcomma }}</td>
@@ -247,6 +247,9 @@ function printPreview() {
 }
 .btn-secondary:hover {
   background-color: #5a6268;
+}
+.preserve-whitespace {
+  white-space: pre-wrap;
 }
 </style>
 

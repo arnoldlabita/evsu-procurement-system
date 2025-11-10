@@ -79,22 +79,22 @@
     </form>
 
     <h5 class="mt-4">PR Items</h5>
-    <table class="table table-bordered">
+    <table class="table table-bordered align-middle" style="table-layout: auto;">
       <thead class="table-dark">
         <tr>
-          <th>#</th>
+          <th>Stock no.</th>
           <th>Description</th>
           <th>Quantity</th>
           <th>Unit</th>
-          <th>Unit Cost (₱)</th>
-          <th>Total (₱)</th>
+          <th>Unit Cost</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody>
         {% for item in pr.items.all %}
         <tr>
           <td>{{ forloop.counter }}</td>
-          <td>{{ item.description }}</td>
+          <td class="preserve-whitespace">{{ item.description }}</td>
           <td>{{ item.quantity }}</td>
           <td>{{ item.unit }}</td>
           <td>{{ item.unit_cost|floatformat:2|intcomma }}</td>
@@ -105,6 +105,11 @@
         {% endfor %}
       </tbody>
     </table>
+
+<div class="text-end fw-bold mt-2">
+  Grand Total: ₱{{ grand_total|floatformat:2|intcomma }}
+</div>
+
 
     {% if pr.attachments %}
     <div class="mt-3">
