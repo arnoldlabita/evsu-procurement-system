@@ -1,0 +1,100 @@
+{% load humanize %}
+{% load pr_extras %}
+
+<div class="page-break">
+  <!-- Header -->
+  <p style="font-size:12px; position:absolute; top:20px; right:40px;"><em>Appendix 60</em></p>
+  <div style="margin-top:60px; text-align: center;">
+    <h3 style="margin-bottom:40px;">PURCHASE REQUEST</h3>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; width: 79%;">
+    <div>Entity Name: _________________________</div>
+    <div>Fund Cluster: _________________________</div>
+  </div>
+
+  <table style="margin-top:5px;">
+    <tr>
+      <td style="width:60%; padding:6px;">Office/Section: {{ pr.office_section }}</td>
+      <td style="width:40%; padding:6px;">PR No.: {{ pr.pr_number }}</td>
+    </tr>
+    <tr>
+      <td style="width:60%; padding:6px;">Responsibility Center Code: ____________</td>
+      <td style="width:40%; padding:6px;">Date: {{ pr.pr_date|date:"F d, Y" }}</td>
+    </tr>
+  </table>
+
+  <!-- Item Table -->
+  <table style="margin-top:5px;">
+    <thead>
+      <tr>
+        <th style="width:12%;">Stock/ Property No.</th>
+        <th style="width:8%;">Unit</th>
+        <th style="width:40%;">Item Description</th>
+        <th style="width:10%;">Quantity</th>
+        <th style="width:15%;">Unit Cost</th>
+        <th style="width:15%;">Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="center">{{ forloop.counter0|add:start|add:"1" }}</td>
+        <td class="center">{{ item.unit }}</td>
+        <td class="preserve-whitespace">{{ item.description }}</td>
+        <td class="center">{{ item.quantity }}</td>
+        <td class="right">{{ item.unit_cost|floatformat:2|intcomma }}</td>
+        <td class="right">{{ item.total_cost|floatformat:2|intcomma }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td colspan="5" class="right fw-bold">Sub Total:</td>
+        <td class="right fw-bold">
+          ₱ {{ items|sum_attr:"total_cost"|floatformat:2|intcomma }}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Purpose -->
+  <table style="margin-top:10px;">
+    <tr>
+      <td colspan="6"><strong>Purpose:</strong> <u>{{ pr.purpose }}</u></td>
+    </tr>
+  </table>
+
+  <!-- Signature Block -->
+  <table class="signature-block">
+    <tr>
+      <td colspan="3">
+        <strong>Requested by:</strong><br><br>
+        Signature: ___________________________<br>
+        Printed Name: <strong><u>{{ pr.requisitioner }}</u></strong><br>
+        Designation: <u>{{ pr.designation }}</u>
+      </td>
+      <td colspan="3">
+        <strong>Approved by:</strong><br><br>
+        Signature: ___________________________<br>
+        Printed Name: <strong><u>DENNIS C. DE PAZ, Ph.D.</u></strong><br>
+        Designation: <u>University President</u>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Funding Source -->
+  <table class="no-border funding-section" style="margin-top:10px;">
+    <tr>
+      <td style="width:70%;"></td>
+      <td style="width:30%;">
+        <p>P.R. Charge to: <strong><u>{{ pr.funding }}</u></strong></p>
+        <p>Total Amount: <strong>₱ {{ pr.total_amount|floatformat:2|intcomma }}</strong></p>
+        {% if pr.funding == "TRF" %}
+          <p><strong>RUBY N. MANCIO, CPA</strong><br>University Accountant</p>
+        {% else %}
+          <p><strong>EVONE MAE KARMELLE P. BARANDA, CPA</strong><br>OIC Head Budget Office</p>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+</div>
+<td class="center">{{ forloop.counter0|add:start|add:"1" }}</td>

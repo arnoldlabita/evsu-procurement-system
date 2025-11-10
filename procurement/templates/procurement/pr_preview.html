@@ -1,5 +1,7 @@
 {% load humanize %}
+{% load pr_extras %}
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,6 +56,11 @@
       padding: 10px;
     }
 
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
     @media print {
       @page {
         size: A4 portrait;
@@ -101,11 +108,19 @@
       .signature-block td {
         height: auto !important;
       }
+
+      .page-break {
+        page-break-before: always;
+      }
     }
   </style>
 </head>
 <body>
 
+{% for chunk in pr.items.all|chunk_items:20 %}
+  {% with start=forloop.counter0|mul:"20" %}
+  <div class="page-break">
+    <!-- Header -->
 <p style="font-size:12px; position:absolute; top:20px; right:40px;"><em>Appendix 60</em></p>
 <div style="margin-top:60px; text-align: center;">
   <h3 style="margin-bottom:40px;">PURCHASE REQUEST</h3>
@@ -137,30 +152,26 @@
               <th style="width:15%;">Unit Cost</th>
               <th style="width:15%;">Total Cost</th>
             </tr>
-          </thead>
-          <tbody>
-            {% for item in pr.items.all %}
-            <tr>
-              <td class="center">{{ forloop.counter }}</td>
-              <td class="center">{{ item.unit }}</td>
-              <td class="preserve-whitespace">{{ item.description }}</td>
-              <td class="center">{{ item.quantity }}</td>
-              <td class="right">{{ item.unit_cost|floatformat:2|intcomma }}</td>
-              <td class="right">{{ item.total_cost|floatformat:2|intcomma }}</td>
-            </tr>
-            {% empty %}
-            {% for i in "123456789"|make_list %}
-            <tr>
-              <td>&nbsp;</td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-            </tr>
-            {% endfor %}
-            {% endfor %}
-          </tbody>
+      </thead>
+      <tbody>
+        {% for item in chunk %}
+        <tr>
+          <td class="center">{{ forloop.counter0|add:start|add:"1" }}</td>
+          <td class="center">{{ item.unit }}</td>
+          <td class="preserve-whitespace">{{ item.description }}</td>
+          <td class="center">{{ item.quantity }}</td>
+          <td class="right">{{ item.unit_cost|floatformat:2|intcomma }}</td>
+          <td class="right">{{ item.total_cost|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td colspan="5" class="right fw-bold">Sub Total:</td>
+          <td class="right fw-bold">
+            ₱ {{ chunk|sum_attr:"total_cost"|floatformat:2|intcomma }}
+          </td>
+        </tr>
+      </tbody>
+
           <tr>
             <td colspan="6" style="padding:6px;">
               <strong>Purpose:</strong> <u>{{ pr.purpose }}</u>
@@ -219,15 +230,16 @@
       </td>
     </tr>
   </table>
+  {% endwith %}
+{% endfor %}
 
-
-  {% if request.GET.auto_print == "true" %}
-  <script>
-  window.onload = function() {
-    window.print();
-  };
-  </script>
-  {% endif %}
+{% if request.GET.auto_print == "true" %}
+<script>
+window.onload = function() {
+  window.print();
+};
+</script>
+{% endif %}
 
 </body>
 </html>

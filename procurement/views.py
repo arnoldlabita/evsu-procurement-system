@@ -1265,26 +1265,21 @@ def pr_list(request):
     }
     return render(request, 'procurement/pr_list.html', context)
 
-from math import ceil
-
-def purchase_request_view(request, pk):
+def print_pr(request, pk):
     pr = get_object_or_404(PurchaseRequest, pk=pk)
-    items = list(pr.items.all())
-    items_per_page = 20
-    pages = [
-        items[i:i + items_per_page]
-        for i in range(0, len(items), items_per_page)
-    ]
 
-    # Calculate subtotals
-    page_subtotals = [
-        sum(item.total_cost for item in page)
-        for page in pages
-    ]
-    grand_total = sum(page_subtotals)
+    # Select the officer info dynamically
+    if pr.funding == "TRF":
+        officer_name = "RUBY N. MANCIO, CPA"
+        officer_title = "University Accountant"
+    else:
+        officer_name = "EVONE MAE KARMELLE P. BARANDA, CPA"
+        officer_title = "OIC, Head Budget Office"
 
-    return render(request, 'purchase_request.html', {
-        'pr': pr,
-        'pages': zip(pages, page_subtotals),
-        'grand_total': grand_total,
+    html_string = render_to_string("procurement/pr_preview.html", {
+        "pr": pr,
+        "officer_name": officer_name,
+        "officer_title": officer_title,
     })
+    pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+    return HttpResponse(pdf, content_type="application/pdf")

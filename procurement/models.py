@@ -167,8 +167,12 @@ class PurchaseRequest(models.Model):
     def __str__(self):
         return self.pr_number or f"PR (draft) {self.id}"
 
+    @property
     def total_amount(self):
-        return sum(item.total_cost() for item in self.items.all())
+        return sum(
+            (item.quantity or 0) * (item.unit_cost or Decimal("0"))
+            for item in self.items.all()
+        )
     
     def breakdown_by_budget(self):
         """
@@ -221,8 +225,10 @@ class PRItem(models.Model):
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)  # ✅ renamed field
     budget_category = models.CharField(max_length=20, choices=BUDGET_CATEGORIES, default="MOOE")
 
+    @property
     def total_cost(self):
-        return self.quantity * self.unit_cost
+        return (self.quantity or 0) * (self.unit_cost or Decimal("0"))
+
 
     def __str__(self):
         return f"{self.description} ({self.unit})"
