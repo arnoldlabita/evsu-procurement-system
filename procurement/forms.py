@@ -1,16 +1,20 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
+from django.forms.widgets import ClearableFileInput
 from .models import (
     PurchaseRequest, PRItem, Supplier,
     RequestForQuotation, AgencyProcurementRequest,
-    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine, RFQConsolidationLog
+    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine, RFQConsolidationLog,
+    PRAttachment
 )
 
 # -------------------------
 # PURCHASE REQUEST FORMS
 # -------------------------
 
+class MultipleFileInput(ClearableFileInput):
+    allow_multiple_selected = True
 # Requisitioner form (for creating PR)
 class RequisitionerPRForm(forms.ModelForm):
     FUNDING_CHOICES = [
@@ -26,6 +30,11 @@ class RequisitionerPRForm(forms.ModelForm):
         required=False,
     )
 
+    attachments = forms.FileField(
+        required=False,
+        widget=MultipleFileInput(attrs={'multiple': True})
+    )
+
     class Meta:
         model = PurchaseRequest
         fields = [
@@ -34,14 +43,12 @@ class RequisitionerPRForm(forms.ModelForm):
             "office_section",
             "purpose",
             "funding",
-            "attachments",
         ]
         widgets = {
             "requisitioner": forms.TextInput(attrs={"class": "form-control"}),
             "designation": forms.TextInput(attrs={"class": "form-control"}),
             "office_section": forms.TextInput(attrs={"class": "form-control"}),
             "purpose": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
-            "attachments": forms.ClearableFileInput(attrs={"class": "form-control"}),
         }
 
 
@@ -54,14 +61,12 @@ class ProcurementStaffPRForm(forms.ModelForm):
             "pr_date",
             "status",
             "purpose",
-            "attachments",
         ]
         widgets = {
             "pr_number": forms.TextInput(attrs={'class': 'form-control'}),
             "pr_date": forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             "status": forms.Select(attrs={'class': 'form-select'}),
             "purpose": forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            "attachments": forms.ClearableFileInput(attrs={"class": "form-control"}),
         }
 
 

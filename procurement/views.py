@@ -18,9 +18,10 @@ from django.views.decorators.http import require_POST
 from .models import Signatory
 import csv
 from django.http import HttpResponse
-from .utils import award_aoq_and_create_po
+from procurement.helpers import award_aoq_and_create_po
 from django.views.decorators.csrf import csrf_exempt
 import json
+from procurement.utils.google_drive import upload_file_to_drive
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
@@ -219,16 +220,31 @@ class PRCreateView(LoginRequiredMixin, generic.CreateView):
         })
 
     def post(self, request):
-        form = self.form_class(request.POST, request.FILES)  # ✅ instantiate properly
+        form = self.form_class(request.POST, request.FILES) 
         formset = PRItemFormSet(request.POST, prefix="form")
 
-        if form.is_valid() and formset.is_valid():  # ✅ works now
+        if form.is_valid() and formset.is_valid(): 
             pr = form.save(commit=False)
             pr.created_by = request.user
             pr.save()
 
             formset.instance = pr
             formset.save()
+
+        # Create PR folder in Drive
+        folder_name = f"PR-{pr.pk}-{pr.pr_number or 'UNASSIGNED'}"
+        drive_folder_id = create_folder_in_drive(folder_name)
+
+        # Upload multiple files
+        attachments = request.FILES.getlist("attachments")
+        for file in attachments:
+            drive_file_id = upload_file_to_drive(file, folder_id=drive_folder_id)
+
+            PRAttachment.objects.create(
+                pr=pr,
+                filename=file.name,
+                drive_file_id=drive_file_id
+            )
 
             messages.success(request, "Purchase Request created successfully.")
             return redirect("procurement:pr_detail", pk=pr.pk)

@@ -32,7 +32,7 @@
     <div class="small">Quotation No(s):</div>
     {% if rfq.purchase_request %}
       <strong>{{ rfq.purchase_request.pr_number }}</strong>
-    {% elif rfq.consolidated_prs.exists %}
+    {% elif rfq.consolidated_prs.all %}
       {% for pr in rfq.consolidated_prs.all %}
         <strong>{{ pr.pr_number }}</strong>{% if not forloop.last %}{% endif %}
       {% endfor %}
@@ -80,13 +80,13 @@
           {% for item in rfq.purchase_request.items.all %}
             <tr>
               <td class="text-center">{{ forloop.counter }}</td>
-              <td>{{ item.description }}</td>
+              <td class="preserve-whitespace">{{ item.description }}</td>
               <td class="text-center">{{ item.quantity }}</td>
               <td class="text-center">{{ item.unit }}</td>
               <td></td>
             </tr>
           {% endfor %}
-        {% elif rfq.consolidated_prs.exists %}
+        {% elif rfq.consolidated_prs.all %}
           {% for pr in rfq.consolidated_prs.all %}
             <tr class="table-secondary fw-bold">
               <td colspan="5">PR No. {{ pr.pr_number }}</td>
@@ -94,7 +94,7 @@
             {% for item in pr.items.all %}
               <tr>
                 <td class="text-center">{{ forloop.counter }}</td>
-                <td>{{ item.description }}</td>
+                <td class="preserve-whitespace">{{ item.description }}</td>
                 <td class="text-center">{{ item.quantity }}</td>
                 <td class="text-center">{{ item.unit }}</td>
                 <td></td>
@@ -110,7 +110,7 @@
     <div class="purpose">
       Purpose: <u>{{ rfq.purchase_request.purpose }}</u>
     </div>
-  {% elif rfq.consolidated_prs.exists %}
+  {% elif rfq.consolidated_prs.all %}
     {% for pr in rfq.consolidated_prs.all %}
       <div class="purpose">
         <strong>PR No: {{ pr.pr_number }}</strong><br>
@@ -150,9 +150,6 @@ The terms and conditions specified above are hereby accepted. The quantities sho
       <div class="small">Email Address</div>
     </div>
   </div>
-    <div class="page-footer text-end small muted">
-    Page 1 of 1
-  </div>
 </div>
 
 <div class="actions">
@@ -172,6 +169,8 @@ body {
   font-size: 12px;
   color: #000;
   background: #f8f8f8;
+  margin: 0;
+  padding: 0;
 }
 
 .rfq-wrap {
@@ -214,18 +213,9 @@ hr.rfq-divider {
   margin: 10px 0;
 }
 
-.small {
-  font-size: 12px;
-}
-
-.small-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.muted {
-  color: var(--muted);
-}
+.small { font-size: 12px; }
+.small-label { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
 
 .meta {
   display: flex;
@@ -243,17 +233,8 @@ hr.rfq-divider {
   text-align: left;
 }
 
-.rfq-meta-wrapper {
-  width: 30%;
-  margin-left: auto;
-}
-
-.rfq-details-wrapper {
-  width: 50%;
-  margin-left: auto;
-  margin-right: 0;
-  text-align: left;
-}
+.rfq-meta-wrapper { width: 30%; margin-left: auto; }
+.rfq-details-wrapper { width: 50%; margin-left: auto; margin-right: 0; text-align: left; }
 
 .rfq-details p {
   margin: 0;
@@ -267,8 +248,11 @@ hr.rfq-divider {
   margin-bottom: 10px;
 }
 
-.table-responsive {
-  margin-top: 8px;
+.table-responsive { margin-top: 8px; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .table th,
@@ -278,9 +262,12 @@ hr.rfq-divider {
   font-size: 13px;
 }
 
-.purpose {
-  margin-top: 10px;
+.table th {
+  background: #f0f0f0;
+  text-align: center;
 }
+
+.purpose { margin-top: 10px; }
 
 .certification {
   text-align: justify;
@@ -302,10 +289,7 @@ hr.rfq-divider {
   align-items: center;
 }
 
-.sig {
-  flex: 1;
-  text-align: center;
-}
+.sig { flex: 1; text-align: center; }
 
 .sig .line {
   margin-top: 36px;
@@ -321,34 +305,15 @@ hr.rfq-divider {
   margin-top: 2px;
 }
 
-.company-info-wrapper {
-  width: 20%;
-  margin-right: auto;
-}
+.company-info-wrapper { width: 20%; margin-right: auto; }
+.company-info { text-align: center; font-size: 12px; }
 
-.company-info {
-  text-align: center;
-  font-size: 12px;
-}
+.notes { margin-top: 14px; font-size: 13px; }
+.notes ol { padding-left: 1.2rem; margin: 6px 0; }
 
-.notes {
-  margin-top: 14px;
-  font-size: 13px;
-}
+.page-footer { margin-top: 16px; }
 
-.notes ol {
-  padding-left: 1.2rem;
-  margin: 6px 0;
-}
-
-.page-footer {
-  margin-top: 16px;
-}
-
-.actions {
-  text-align: right;
-  margin-top: 16px;
-}
+.actions { text-align: right; margin-top: 16px; }
 
 button {
   padding: 6px 12px;
@@ -357,30 +322,7 @@ button {
   border-radius: 6px;
   cursor: pointer;
 }
-  @media print {
-    @page {
-      size: A4 portrait;
-      margin: 0.5in 0.75in;
-    }
 
-    html, body {
-      background: #fff !important;
-      color: #000 !important;
-      margin: 0;
-      padding: 0;
-      font-size: 13px !important;
-    }
-  .rfq-wrap {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    box-shadow: none;
-  }
-
-  button {
-    display: none;
-  }
-}
 .rfq-info-block {
   display: flex;
   justify-content: space-between;
@@ -394,16 +336,64 @@ button {
   width: 48%;
   font-size: 12px;
 }
-#rfqPreviewBody .rfq-wrap {
-  max-width: 900px;
-  margin: 5in;
-}
-button {
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 6px;
-  cursor: pointer;
+
+.nowrap { white-space: nowrap !important; }
+.center { text-align: center; }
+.right { text-align: right; }
+.fw-bold { font-weight: bold; }
+.preserve-whitespace { white-space: pre-wrap; word-break: break-word; }
+
+/* PRINT STYLES */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0.5in 0.75in;
+  
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 11pt;
+      color: #555;
+    }
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    margin: 0;
+    padding: 0;
+    font-size: 13px !important;
+  }
+
+  .rfq-wrap {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  button { display: none; }
+
+  td.preserve-whitespace {
+    white-space: pre-wrap !important;
+    word-break: normal !important;
+  }
+
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    text-align: right;
+    font-size: 11pt;
+    color: #555;
+  }
+
+  .page-footer::after {
+    content: "Page " counter(page) " of " counter(pages);
+  }
 }
 
 </style>

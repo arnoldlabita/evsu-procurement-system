@@ -15,10 +15,21 @@
     <p><strong>Office/Section:</strong> {{ pr.office_section }}</p>
     <p><strong>Funding:</strong> {{ pr.funding }}</p>
     <p><strong>Purpose:</strong> {{ pr.purpose }}</p>
-    {% if pr.attachments %}
-      <p><strong>Attachment:</strong>
-        <a href="{{ pr.attachments.url }}" target="_blank" class="text-maroon">View File</a>
-      </p>
+    <p><strong>Attachments</strong></p>
+
+    {% if pr.attachments.all %}
+        <ul class="list-group">
+            {% for file in pr.attachments.all %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ file.filename }}</span>
+                <a href="{{ file.drive_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    View
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="text-muted">No attachments uploaded.</div>
     {% endif %}
   </div>
 

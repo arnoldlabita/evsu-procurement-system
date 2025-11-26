@@ -149,3 +149,6 @@ LOGIN_URL = "/accounts/login/"
 
 # Allow embedding from same origin (for modal iframes)
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+GOOGLE_SERVICE_ACCOUNT_FILE = BASE_DIR / "credentials/prism-479401-acab82854a48.json"
+GOOGLE_DRIVE_FOLDER_ID = "1kdgRg6MZ51cxbi8m8Oa6IivYZme56fFx"

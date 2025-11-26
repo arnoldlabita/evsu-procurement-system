@@ -121,7 +121,6 @@ class PurchaseRequest(models.Model):
     office_section = models.CharField(max_length=255, blank=True, null=True)
     purpose = models.TextField(blank=True, null=True)
     funding = models.CharField(max_length=50, choices=FUNDING_CHOICES, blank=True, null=True, help_text="Select the fund source")
-    attachments = models.FileField(upload_to="pr_attachments/", blank=True, null=True)
 
 
     # --- PR Metadata ---
@@ -184,6 +183,14 @@ class PurchaseRequest(models.Model):
             totals[item.budget_category] += (item.quantity or 0) * (item.unit_cost or 0)
         return dict(totals)
 
+class PRAttachment(models.Model):
+    pr = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name="attachments")
+    filename = models.CharField(max_length=255)
+    drive_file_id = models.CharField(max_length=300)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def drive_url(self):
+        return f"https://drive.google.com/file/d/{self.drive_file_id}/view"
 
 class PRItem(models.Model):
     UNIT_CHOICES = [

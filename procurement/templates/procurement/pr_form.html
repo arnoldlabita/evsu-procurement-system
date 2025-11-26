@@ -150,16 +150,28 @@
         {{ form.funding.label_tag }}
         <select name="funding" id="id_funding" class="form-select" required>
           <option value="" disabled selected>— Select Funding Source —</option>
-          <option value="IGF">Internally Generated Fund (IGF)</option>
           <option value="RAF">Regular Agency Fund (RAF)</option>
+          <option value="IGF">Internally Generated Fund (IGF)</option>
           <option value="TRF">Trust Receipt Fund (TRF)</option>
           <option value="BRF">Business Related Fund (BRF)</option>
         </select>
       </div>
     </div>
 
-    <div class="mt-4">{{ form.purpose.label_tag }}{{ form.purpose }}</div>
+    <div class="row mt-4">
+      <div class="col-md-8">
+        {{ form.purpose.label_tag }}
+        {{ form.purpose }}
+      </div>
 
+      <div class="col-md-4">
+        <label class="form-label">Attachments</label>
+        <input type="file" name="attachments" class="form-control" multiple>
+        <div class="text-muted small">You may upload multiple files.</div>
+      </div>
+    </div>
+
+  
     <!-- ✅ PR Items -->
     <h5 class="mt-4 fw-bold text-maroon">Items</h5>
     {{ formset.management_form }}

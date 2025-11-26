@@ -3,11 +3,22 @@
 
 {% block content %}
 <div class="container mt-4">
-  <h2 class="mb-3">Abstract of Quotation — {{ rfq.rfq_number }}</h2>
-  <p><strong>Purchase Request:</strong> {{ rfq.purchase_request.pr_number }}</p>
+  <h2 class="mb-3">Abstract of Quotation</h2>
+  
+<p><strong>Purchase Request:</strong>
+  {% if rfq.purchase_request %}
+    {{ rfq.purchase_request.pr_number }}
+  {% elif rfq.consolidated_prs.all %}
+    {% for pr in rfq.consolidated_prs.all %}
+      {{ pr.pr_number }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  {% endif %}
+</p>
+
+
 
   <div class="table-responsive mt-4">
-    <table class="table table-bordered align-middle text-center">
+    <table class="table table-bordered align-middle text-right">
       <thead class="table-light">
         <tr>
           <th class="text-center">Stock No.</th>
@@ -23,7 +34,7 @@
         {% for item in items %}
         <tr>
           <td class="text-center">{{ item.stock_no }}</td>
-          <td class="text-start">{{ item.description }}</td>
+          <td class="preserve-whitespace">{{ item.description }}</td>
           <td class="text-center">{{ item.unit }}</td>
           <td class="text-center">{{ item.quantity }}</td>
 
@@ -56,5 +67,16 @@
     background-color: #800000;
     color: white;
   }
+
+  .nowrap {
+  white-space: nowrap !important;
+}
+
+.center { text-align: center; }
+.right { text-align: right; }
+.fw-bold { font-weight: bold; }
+.nowrap { white-space: nowrap; }
+.preserve-whitespace { white-space: pre-wrap; word-break: break-word; }
+
 </style>
 {% endblock %}
