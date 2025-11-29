@@ -26,3 +26,6 @@ media/
 # OS files
 .DS_Store
 Thumbs.db
+
+*.json
+evsu_procurement_system/credentials/*.json
