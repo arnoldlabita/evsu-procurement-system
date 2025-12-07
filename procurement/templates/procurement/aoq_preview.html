@@ -3,23 +3,30 @@
 
 {% block content %}
 <div class="container mt-4">
-  <h2 class="mb-3">Abstract of Quotation</h2>
-  
-<p><strong>Purchase Request:</strong>
-  {% if rfq.purchase_request %}
-    {{ rfq.purchase_request.pr_number }}
-  {% elif rfq.consolidated_prs.all %}
-    {% for pr in rfq.consolidated_prs.all %}
-      {{ pr.pr_number }}{% if not forloop.last %}, {% endif %}
-    {% endfor %}
-  {% endif %}
-</p>
 
+  <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0 text-maroon fw-bold">Abstract of Quotation</h2>
 
+      <!-- PRINT PREVIEW BUTTON -->
+      <a href="javascript:window.print()" class="btn btn-maroon">
+        Print Preview
+      </a>
+  </div>
+
+  <!-- PR NUMBERS SECTION -->
+  <p><strong>Purchase Request:</strong>
+    {% if rfq.purchase_request %}
+      {{ rfq.purchase_request.pr_number }}
+    {% elif rfq.consolidated_prs.all %}
+      {% for pr in rfq.consolidated_prs.all %}
+        {{ pr.pr_number }}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+    {% endif %}
+  </p>
 
   {% with suppliers_count=suppliers|length %}
-  {% widthratio suppliers_count 1 2 as supplier_cols %}
-  {% widthratio supplier_cols 1 4 as colspan %}
+    {% widthratio suppliers_count 1 2 as supplier_cols %}
+    {% widthratio supplier_cols 1 4 as colspan %}
 
   <div class="table-responsive mt-4">
     <table class="table table-bordered align-middle text-right">
@@ -38,14 +45,12 @@
       <tbody>
 
         {% if rfq.consolidated_prs.exists %}
-          {# -------------------------- #}
-          {#   CONSOLIDATED RFQ MODE   #}
-          {# -------------------------- #}
+          {# CONSOLIDATED AOQ LAYOUT #}
 
           {% regroup items by purchase_request as pr_groups %}
 
           {% for group in pr_groups %}
-            <!-- PR HEADER ROW -->
+            <!-- PR GROUP HEADER -->
             <tr class="table-light fw-bold">
               <td colspan="{{ colspan }}" class="text-maroon">
                 PR No. {{ group.grouper.pr_number|default:"(Unassigned)" }}
@@ -74,9 +79,7 @@
           {% endfor %}
 
         {% else %}
-          {# -------------------------- #}
-          {#     SINGLE PR MODE        #}
-          {# -------------------------- #}
+          {# SINGLE PR AOQ LAYOUT #}
 
           {% for item in items %}
             <tr>
@@ -102,19 +105,69 @@
       </tbody>
     </table>
   </div>
+  {% endwith %}
 
-{% endwith %}
-
-    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-    <!-- Back button (left) -->
+  <!-- BACK BUTTON -->
+  <div class="mt-3 mb-4">
     <a href="javascript:history.back()" class="btn btn-outline-maroon">← Back</a>
-
-    <!-- AOQ Preview button (right) -->
-    <a href="{% url 'procurement:aoq_preview' rfq.id %}" class="btn btn-maroon">
-        Print
-    </a>
-</div>
   </div>
+<hr class="my-4">
+
+<h4 class="text-maroon fw-bold mb-3">Recommended for Purchase on Quotations of:</h4>
+
+<div class="row text-center mb-4">
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">DORIS ANN S. ESPINA, CPA, CSEE, Ph.D., JD</p>
+    <p class="small mb-0">Regular Member</p>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">VILMAR SILVANO A. SOLIS, CPA</p>
+    <p class="small mb-0">Regular Member</p>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">ATTY. RODOLPH B. HERNANDEZ, JR.</p>
+    <p class="small mb-0">Regular Member</p>
+  </div>
+</div>
+
+<div class="row text-center mb-4">
+
+  <div class="col-md-6 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">DR. MARICHU S. ARMADA</p>
+    <p class="small mb-0">Provisional BAC Member – Expert</p>
+  </div>
+
+  <div class="col-md-6 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">DANILO B. PULMA, DM</p>
+    <p class="small mb-0">Provisional BAC Member – End-user</p>
+  </div>
+
+</div>
+
+<hr class="my-4">
+
+<div class="row text-center mb-5">
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">ANALYN C. ESPAÑO, DA</p>
+    <p class="small mb-0">BAC Vice-Chairperson</p>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">LYDIA M. MORANTE, DA</p>
+    <p class="small mb-0">BAC Chairperson</p>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <p class="fw-bold mb-0 text-uppercase">DENNIS C. DE PAZ, Ph.D.</p>
+    <p class="small mb-0">University President</p>
+  </div>
+
+</div>
+
 </div>
 
 <style>
@@ -128,28 +181,39 @@
     background-color: #800000;
     color: white;
   }
-
-  .nowrap {
-  white-space: nowrap !important;
-}
-
-.center { text-align: center; }
-.right { text-align: right; }
-.fw-bold { font-weight: bold; }
-.nowrap { white-space: nowrap; }
-.preserve-whitespace { white-space: pre-wrap; word-break: break-word; }
-
-.btn-maroon {
+  .btn-maroon {
     background-color: #800000;
     color: white;
     border: 1px solid #800000;
+  }
+  .btn-maroon:hover {
+    background-color: #a00000;
+    color: white;
+  }
+  .preserve-whitespace { white-space: pre-wrap; word-break: break-word; }
+
+  /* Print Styling */
+  @media print {
+    .btn, a { display: none !important; }
+    .table th, .table td { font-size: 12px; }
+  }
+
+.signatory-name {
+  text-transform: uppercase;
+  font-weight: bold;
+  margin-bottom: 0;
 }
 
-.btn-maroon:hover {
-    background-color: #a00000;
-    border-color: #a00000;
-    color: white;
+.signatory-title {
+  font-size: 0.85rem;
+  margin-top: 0;
+}
+
+@media print {
+  .signatory-title { font-size: 10px; }
+  .signatory-name { font-size: 12px; }
 }
 
 </style>
+
 {% endblock %}

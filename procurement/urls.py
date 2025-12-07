@@ -85,7 +85,8 @@ urlpatterns = [
     path("aoqs/<int:pk>/", AOQDetailView.as_view(), name="aoq_detail"),
     path("aoqs/<int:pk>/generate_po/", generate_po_from_aoq, name="aoq_generate_po"),
     path("aoqs/", views.AOQListView.as_view(), name="aoq_list"),
-    
+    path("aoqs/<int:pk>/preview/", views.aoq_preview, name="aoq_preview"),
+
     # ----------------------------
     # Purchase Orders (PO)
     # ----------------------------

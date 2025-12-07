@@ -25,8 +25,8 @@ from procurement.utils.google_drive import upload_file_to_drive
 
 from .models import (
     PurchaseRequest, PRItem, Supplier,
-    RequestForQuotation, AgencyProcurementRequest,
-    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine
+    RequestForQuotation, AgencyProcurementRequest, RFQConsolidationLog,
+    AbstractOfQuotation, AOQLine, PurchaseOrder, Bid, BidLine,
 )
 from .forms import (
     RequisitionerPRForm, ProcurementStaffPRForm,
@@ -456,6 +456,38 @@ class AOQListView(LoginRequiredMixin, generic.ListView):
 def find_lcrb_for_item(aoq, pr_item):
     lines = aoq.lines.filter(pr_item=pr_item, responsive=True).order_by("unit_price")
     return lines.first()
+
+@login_required
+def aoq_preview(request, pk):
+    rfq = get_object_or_404(RequestForQuotation, pk=pk)
+
+    # Get suppliers for this RFQ
+    supplier_ids = rfq.bids.values_list("supplier_id", flat=True)
+    suppliers = Supplier.objects.filter(id__in=supplier_ids)
+
+    # Get items for this RFQ
+    if rfq.consolidated_prs.exists():
+        items = PRItem.objects.filter(purchase_request__in=rfq.consolidated_prs.all())
+    else:
+        # Ensure purchase_request has related_name="items" on PRItem
+        items = rfq.purchase_request.items.all()
+
+    # Get bid lines for each supplier + item
+    supplier_data = {}
+    for supplier in suppliers:
+        supplier_lines = BidLine.objects.filter(
+            bid__rfq=rfq,
+            bid__supplier=supplier
+        )
+        supplier_data[supplier.id] = {line.pr_item.id: line for line in supplier_lines}
+
+    context = {
+        "rfq": rfq,
+        "suppliers": suppliers,
+        "items": items,
+        "supplier_data": supplier_data,
+    }
+    return render(request, "procurement/aoq_preview.html", context)
 
 
 @login_required
