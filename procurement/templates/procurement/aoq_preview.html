@@ -192,26 +192,47 @@
   }
   .preserve-whitespace { white-space: pre-wrap; word-break: break-word; }
 
-  /* Print Styling */
-  @media print {
-    .btn, a { display: none !important; }
-    .table th, .table td { font-size: 12px; }
+/* Print Styling */
+@media print {
+  @page {
+    size: folio landscape;   /* Folio paper, landscape orientation */
+    margin: 1cm;
+
+    /* Add page numbers in the footer */
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 12px;
+      color: #333;
+    }
   }
 
-.signatory-name {
-  text-transform: uppercase;
-  font-weight: bold;
-  margin-bottom: 0;
-}
+  body {
+    -webkit-print-color-adjust: exact;
+  }
 
-.signatory-title {
-  font-size: 0.85rem;
-  margin-top: 0;
-}
+  .btn, a {
+    display: none !important;
+  }
 
-@media print {
-  .signatory-title { font-size: 10px; }
-  .signatory-name { font-size: 12px; }
+  .table th, .table td {
+    font-size: 12px;
+  }
+
+  /* Repeat table headers on each printed page */
+  table {
+    page-break-inside: auto;
+    border-collapse: collapse;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
 }
 
 </style>

@@ -62,7 +62,7 @@
                 {% for supplier in suppliers %}
                   {% with line=supplier_data|get_item:supplier|get_item:item.id %}
                     {% if line %}
-                      <td class="text-center">{{ line.offer }}</td>
+                      <td class="text-center">{{ line.offer|default_if_none:"" }}</td>
                       <td class="text-end">{{ line.unit_price|floatformat:2|intcomma }}</td>
                     {% else %}
                       <td></td><td></td>
@@ -88,7 +88,7 @@
               {% for supplier in suppliers %}
                 {% with line=supplier_data|get_item:supplier|get_item:item.id %}
                   {% if line %}
-                    <td class="text-center">{{ line.offer }}</td>
+                    <td class="text-center">{{ line.offer|default_if_none:"" }}</td>
                     <td class="text-end">{{ line.unit_price|floatformat:2|intcomma }}</td>
                   {% else %}
                     <td></td><td></td>
